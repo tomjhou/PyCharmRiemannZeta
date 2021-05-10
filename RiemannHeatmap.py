@@ -77,10 +77,10 @@ def on_keypress(event):
 
 print('Select plot type:')
 print('1. Standard Riemann, critical strip (30 sec)')
-print('2. Standard Riemann, large square')
-print('3. Symmetric, critical strip')
-print('4. Symmetric, large square')
-print('5. Standard, zoomed critical strip')
+print('2. Standard Riemann, large square (31 sec)')
+print('3. Standard, zoomed critical strip')
+print('4. Symmetric, critical strip (47 sec)')
+print('5. Symmetric, large square (31 sec)')
 print('6. Symmetric, zoomed critical strip')
 print('7. Gamma, critical strip')
 print('8. Gamma, large square')
@@ -113,14 +113,14 @@ elif selection == 2:
     # Standard version, square
     rsize = 125; plot_domain(domaincol_c, lambda z:rm.Riemann(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize, yCenter + rsize], title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 2)
 elif selection == 3:
-    # Symmetric version
-    rsize = 30; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 5)
-elif selection == 4:
-    # Symmetric version, square
-    rsize = 125; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize, yCenter + rsize], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 2)
-elif selection == 5:
     # Standard, zoomed into 0.5 + 50j
     rsize = 2; xCenter = 0.5; yCenter = 50; plot_domain(domaincol_c, lambda z:rm.Riemann(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 25)
+elif selection == 4:
+    # Symmetric version
+    rsize = 30; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 5)
+elif selection == 5:
+    # Symmetric version, square
+    rsize = 125; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize, yCenter + rsize], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 2)
 elif selection == 6:
     # Symmetric version, zoomed into 0.5 + 50j
     rsize = 2; xCenter = 0.5; yCenter = 50; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 25)
