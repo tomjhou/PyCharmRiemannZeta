@@ -8,18 +8,17 @@ import RiemannMath as rm
 from scipy.special import gamma
 import time
 
-
 rm.RIEMANN_ITER_LIMIT = 80
 rm.precompute_coeffs()
 
 
-def Hcomplex(z):# computes the hue corresponding to the complex number z
-    H = np.angle(z) / (2*np.pi) + 1
+def Hcomplex(z):  # computes the hue corresponding to the complex number z
+    H = np.angle(z) / (2 * np.pi) + 1
     return np.mod(H, 1)
 
 
 def g(x):
-    return (1- 1/(1+x**2))**0.2
+    return (1 - 1 / (1 + x ** 2)) ** 0.2
 
 
 def func_vals(f, re, im, N):  # evaluates the complex function at the nodes of the grid
@@ -36,15 +35,16 @@ def func_vals(f, re, im, N):  # evaluates the complex function at the nodes of t
     z = x + 1j * y
     return f(z)
 
+
 # Maps 0 to black, and infinity to white. Intermediate colors are
 def domaincol_c(w, s):  # Classical domain coloring
     # w is the  array of values f(z)
     # s is the constant saturation
 
-    H = Hcomplex(w) # Determine hue
-    S = s * np.ones(H.shape) # Saturation = 1.0 always
-    modul = np.absolute(w)   #
-#    V = (1.0 - 1.0 / (1 + modul ** 2)) ** 0.2
+    H = Hcomplex(w)  # Determine hue
+    S = s * np.ones(H.shape)  # Saturation = 1.0 always
+    modul = np.absolute(w)  #
+    #    V = (1.0 - 1.0 / (1 + modul ** 2)) ** 0.2
     V = np.ones(H.shape)
     # the points mapped to infinity are colored with white; hsv_to_rgb(0, 0, 1)=(1, 1, 1)=white
 
@@ -54,7 +54,9 @@ def domaincol_c(w, s):  # Classical domain coloring
 
 
 def plot_domain(color_func, f, re=[-1, 1], im=[-1, 1], title='',
-                s=0.9, N=200, daxis=None):
+                s=0.9,  # Saturation
+                N=200,  # Number of points per unit interval
+                daxis=None):
     w = func_vals(f, re, im, N)
     domc = color_func(w, s)
     plt.xlabel("$\Re(z)$")
@@ -67,7 +69,9 @@ def plot_domain(color_func, f, re=[-1, 1], im=[-1, 1], title='',
         plt.imshow(domc, origin="lower")
         plt.axis('off')
 
+
 qFlag = False
+
 
 def on_keypress(event):
     global qFlag
@@ -85,20 +89,22 @@ print('6. Symmetric, zoomed critical strip')
 print('7. Gamma, critical strip')
 print('8. Gamma, large square')
 print('9. Gamma, zoomed critical strip')
+print('10. sin function, large square')
+print('11. cos function, large square')
+print('12. x^(3-1j)')
 selection = input("Select type: ")
 selection = int(selection)
 
 plt.rcParams['figure.figsize'] = 4, 4
 plt.tight_layout()
 rsize = 1
-plot_domain(domaincol_c, lambda z:z, re=[-rsize, rsize], im=[-rsize, rsize], title='$z$', daxis=True, N = 100)
+plot_domain(domaincol_c, lambda z: z, re=[-rsize, rsize], im=[-rsize, rsize], title='$z$', daxis=True, N=100)
 plt.gca().figure.canvas.mpl_connect('key_press_event', on_keypress)
 
 plt.pause(0.001)
 
 t1 = time.time()
 plt.rcParams['figure.figsize'] = 12, 12
-
 
 print('Please wait while computing heatmap... (this may take a minute or two)')
 fig2 = plt.figure()
@@ -108,32 +114,90 @@ yCenter = 0
 
 if selection == 1:
     # Standard version
-    rsize = 30; plot_domain(domaincol_c, lambda z:rm.Riemann(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 4)
+    rsize = 30;
+    plot_domain(domaincol_c,
+                lambda z: rm.Riemann(z),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize * 5, yCenter + rsize * 5],
+                title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N=120/rsize)
 elif selection == 2:
     # Standard version, square
-    rsize = 125; plot_domain(domaincol_c, lambda z:rm.Riemann(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize, yCenter + rsize], title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 2)
+    rsize = 125;
+    plot_domain(domaincol_c,
+                lambda z: rm.Riemann(z),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize, yCenter + rsize], title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
+                daxis=True, N=250/rsize)
 elif selection == 3:
     # Standard, zoomed into 0.5 + 50j
-    rsize = 2; xCenter = 0.5; yCenter = 50; plot_domain(domaincol_c, lambda z:rm.Riemann(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 25)
+    rsize = 2;
+    xCenter = 0.5;
+    yCenter = 50;
+    plot_domain(domaincol_c,
+                lambda z: rm.Riemann(z),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize * 5, yCenter + rsize * 5],
+                title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N=50/rsize)
 elif selection == 4:
-    # Symmetric version
-    rsize = 30; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 5)
+    # Symmetric version, critical strip
+    rsize = 30;
+    plot_domain(domaincol_c, lambda z: rm.RiemannSymmetric(z), re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize * 5, yCenter + rsize * 5],
+                title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N=200/rsize)
 elif selection == 5:
     # Symmetric version, square
-    rsize = 125; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize, yCenter + rsize], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 2)
+    rsize = 10;
+    plot_domain(domaincol_c, lambda z: rm.RiemannSymmetric(z), re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize, yCenter + rsize],
+                title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N=200/rsize)
 elif selection == 6:
     # Symmetric version, zoomed into 0.5 + 50j
-    rsize = 2; xCenter = 0.5; yCenter = 50; plot_domain(domaincol_c, lambda z:rm.RiemannSymmetric(z), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N = 25)
+    rsize = 2;
+    xCenter = 0.5;
+    yCenter = 50;
+    plot_domain(domaincol_c, lambda z: rm.RiemannSymmetric(z), re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize * 5, yCenter + rsize * 5],
+                title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT), daxis=True, N=25)
 elif selection == 7:
     # Gamma(s/2) function
-    rsize = 30; plot_domain(domaincol_c, lambda z:gamma(z/2), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='gamma($z/2$)', daxis=True, N = 3)
+    rsize = 30;
+    plot_domain(domaincol_c, lambda z: gamma(z / 2), re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize * 5, yCenter + rsize * 5], title='gamma($z/2$)', daxis=True, N=3)
 elif selection == 8:
     # Gamma(s/2) function, square
-    rsize = 125; plot_domain(domaincol_c, lambda z:gamma(z/2), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize, yCenter + rsize], title='gamma($z/2$)', daxis=True, N = 2)
+    rsize = 125;
+    plot_domain(domaincol_c, lambda z: gamma(z / 2), re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize, yCenter + rsize], title='gamma($z/2$)', daxis=True, N=200/rsize)
 elif selection == 9:
     # Gamma(s/2) function, zoomed into 0.5 + 50j
-    rsize = 2; xCenter = 0.5; yCenter = 50; plot_domain(domaincol_c, lambda z:gamma(z/2), re=[xCenter-rsize, xCenter+rsize], im=[yCenter - rsize*5, yCenter + rsize*5], title='gamma($z/2$)', daxis=True, N = 25)
-
+    rsize = 2;
+    xCenter = 0.5;
+    yCenter = 50;
+    plot_domain(domaincol_c, lambda z: gamma(z / 2),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize * 5, yCenter + rsize * 5],
+                title='gamma($z/2$)', daxis=True, N=50/rsize)
+elif selection == 10:
+    # sine function, square
+    rsize = 10;
+    plot_domain(domaincol_c, lambda z: np.sin(z / 2),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize, yCenter + rsize],
+                title='sin($z$)', daxis=True, N=100/rsize)
+elif selection == 11:
+    # cosine function, square
+    rsize = 20;
+    plot_domain(domaincol_c, lambda z: np.cos(z / 2),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize, yCenter + rsize],
+                title='cos($z$)', daxis=True, N=200/rsize)
+elif selection == 12:
+    # complex power function, square
+    rsize = 20;
+    plot_domain(domaincol_c, lambda z: np.power(z,3-1j),
+                re=[xCenter - rsize, xCenter + rsize],
+                im=[yCenter - rsize, yCenter + rsize],
+                title='$z$^(3-1j)', daxis=True, N=200/rsize)
 
 print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
 
