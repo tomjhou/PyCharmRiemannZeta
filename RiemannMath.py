@@ -43,20 +43,17 @@ def EtaToZetaScale(v):
 #
 # Approximate accuracy for real s is (very) roughly proportional to magnitude of final summation
 # term, which is about 1/(2^ITER * ITER^s). Hence, number of digits of precision is roughly
-# log_10(2^ITER * ITER^s) = .301 * ITER + s * log_10(ITER). Adding x to the ITER count gives
-# roughly (0.3 + Re(s)/ITER)x additional digits of precision, assuming ITER >> x and s is real.
-# (Precision is somewhat higher for complex s, relative to Re(s), I think.)
+# log_10(2^ITER * ITER^s) = .301 * ITER + s * log_10(ITER). For example:
 #
 # If ITER = 100, digits of precision is roughly 30 + 2*Re(s)
 # If ITER = 1000, digits of precision is roughly 300 + 3*Re(s)
 #
-# If Re(s) is large and positive, this converges faster as s --> infinity, but
-# if Re(s) is large and negative, this converges slower as s --> - infinity.
+# Adding n to the ITER count gives roughly (0.3 + Re(s)/ITER) * n additional digits of
+# precision, assuming ITER >> n. Precision improves slightly as Im(s) increases from 0, I think.
 #
-# Convergence gets very poor for Re(s) large and negative, because
-# the final summation term gets bigger as Re(s) gets more negative. E.g.
-# when Re(s) < - ITER / log(ITER), the final term magnitude exceeds 1.0,
-# (s < -15 when ITER = 100, and s < 100 when ITER = 1000).
+# Note that convergence is very poor for Re(s) large and negative. So we use the functional equation
+# for Re(s) < 0.
+#
 def Riemann(s, getArraySize=False):
     if np.size(s) > 1:
         return [Riemann(x) for x in s]
