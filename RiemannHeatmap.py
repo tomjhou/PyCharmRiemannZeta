@@ -258,10 +258,10 @@ def make_plot(selection, screen_y):
     elif selection == 13:
         # complex power function, square
         rsize = 40;
-        plot_domain2(lambda z: np.power(z, -3),
+        plot_domain2(lambda z: np.power(z, 3-8j),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
-                     title='1/($z$^3)',
+                     title='$z$^(3-8j)',
                      N=screen_y / rsize)
     elif selection == 14:
         # pi ^ s/2
@@ -335,7 +335,7 @@ while True:
           '10. sin function, large square\n'
           '11. cos function, large square\n'
           '12. Complex exponential\n'
-          '13. Complex power\n'
+          '13. Complex power spirals\n'
           '14. Exponential: pi^(z/2)\n'
           '15. Riemann partial sum\n'
           '16. 1 - 2 ^ (1-s)')
