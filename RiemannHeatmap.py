@@ -306,8 +306,8 @@ def make_plot(selection, screen_y):
 
 print("Available backends:")
 print(mpl.rcsetup.all_backends)
-#mpl.use('TkAgg')  #
-mpl.use('Qt5Agg')  # Sometimes this is slower
+mpl.use('TkAgg')    # Generally I prefer this. It is faster, and temporary window seems to close more reliably (on Win and MacOS)
+# mpl.use('Qt5Agg')  # Sometimes this is slower. Need to install PyQt5 for this to work. Temporary window won't close under MacOS
 backend = mpl.get_backend()
 print("Matplotlib backend is: " + backend) # Returns Qt5Agg after installing Qt5 ... if you don't have Qt5, I think it returns TkAgg something
 
@@ -323,8 +323,8 @@ else:
     print('Unable to determine screen resolution. Will default to 1024')
     screen_y = 1024
 
-plt.close()  # Close temporary window
-
+plt.close()  # Close temporary window. On MacOS and Qt5, this doesn't seem to work until next window is created. On Windows or TkAgg, it is fine.
+plt.pause(0.01)  # This is not necessary.
 
 print('Screen y resolution is: ' + str(screen_y))
 screen_y = screen_y - 50  # Subtract a small amount or else the toolbar at bottom will mess things up.
