@@ -170,6 +170,7 @@ for i in range(1, numArrowsPlusOne):
                                                 color=arrowColors[i-1],
                                                 linewidth=5 / np.log2(i + 2)))
     mg.arrowOutput.append(patchTmp)
+
 wait_cursor(False)
 
 plt.pause(0.001)
