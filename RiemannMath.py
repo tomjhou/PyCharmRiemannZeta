@@ -2,6 +2,8 @@ import numpy as np
 # from math import comb # No longer needed because we use faster Pascal method to calculate n_choose_k
 from scipy.special import gamma
 
+callCount = 0
+
 outArray = []
 
 RIEMANN_ITER_LIMIT = 150 # Default. Can be overridden
@@ -36,6 +38,15 @@ def EtaToZetaScale(v):
     # Scale factor converts Dirichlet eta function to Riemann zeta function
     return 1/(1 - 2 ** (1-v))
 
+def printStatus():
+    global callCount
+    callCount = callCount + 1
+    if np.mod(callCount, 100000) == 0:
+        print(str(int(callCount/1000)) + "k ", end='')  # Print status every 100k samples
+    if np.mod(callCount, 1000000) == 0:
+        print()  # Add newline every 1M samples
+
+
 #
 # Calculate Riemann zeta function for complex input s.
 #
@@ -55,15 +66,18 @@ def EtaToZetaScale(v):
 # for Re(s) < 0.
 #
 def Riemann(s, getArraySize=False):
+    global callCount
+
     if np.size(s) > 1:
         return [Riemann(x) for x in s]
 
     if s == 1.0:
         # Calculation blows up at 1.0, so return nan
+        printStatus()
         return np.nan
 
     if np.real(s) < 0:
-        # Use functional equation
+        # Use functional equation. Don't call printstatus yet
         return Riemann(1-s)*gamma(1-s)*np.sin(s*np.pi/2)*(np.pi**(s-1))*(2**s)
 
     cumSum = 0 + 0j
@@ -89,6 +103,8 @@ def Riemann(s, getArraySize=False):
             outArray[plotNum] = cumSum
         plotNum = plotNum + 1
 
+    printStatus()
+
     if getArraySize:
         return cumSum, plotNum
     else:
@@ -101,3 +117,4 @@ def Riemann(s, getArraySize=False):
 def RiemannSymmetric(s):
     return Riemann(s) * gamma(s/2) * (np.pi ** (-s/2))
 #    return (np.pi ** (-s/2))
+

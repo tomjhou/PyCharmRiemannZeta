@@ -35,6 +35,9 @@ def eval_grid(f, re, im, N):
     y = np.linspace(im[0], im[1], int(resH))
     x, y = np.meshgrid(x, y)
     z = x + 1j * y
+
+    rm.callCount = 0
+    print('Mesh has ' + str(np.size(z)/1000) + 'k points')
     return f(z)
 
 
@@ -299,25 +302,31 @@ def make_plot(selection, screen_y):
                      title='1-2^(1-$z$)',
                      N=screen_y * 1.5 / rsize)
 
+    print()   # Riemann prints updates periodically - add newline in case Riemann did not
 
 print("Available backends:")
 print(mpl.rcsetup.all_backends)
-mpl.use('TkAgg')  # Qt5Agg might also be available, but it is MUCH slower. Force TkAgg, which plots much faster
+#mpl.use('TkAgg')  #
+mpl.use('Qt5Agg')  # Sometimes this is slower
 backend = mpl.get_backend()
 print("Matplotlib backend is: " + backend) # Returns Qt5Agg after installing Qt5 ... if you don't have Qt5, I think it returns TkAgg something
-# Creates a temporary window to get its height
-window = plt.get_current_fig_manager().window
-if backend == "Qt5Agg":
-    # Need a hack to get screen size. Temporarily make a full-screen window, get its size, then later set "real" size
-    window.showMaximized()  # Make window fullscreen
-    plt.pause(.001)  # Draw items to screen so we can get size
-    fig = plt.figure()
-    screen_x, screen_y = fig.get_size_inches() * fig.dpi  # size in pixels
-else:
-    # window.state('zoomed')  # Make window fullscreen, for TkAgg
-    screen_x, screen_y = window.wm_maxsize()  # Get full scren monitor coordinates for TkAgg. Doesn't work under Qt5Agg
-    plt.pause(0.001)
 
+# Get screen height in pixels. Somehow, this always requires creating a temporary window. Is there something more elegant?
+mgr = plt.get_current_fig_manager()
+if backend == "Qt5Agg":
+    mgr.full_screen_toggle()  # This creates a temporary full-screen window. Works for Qt5Agg but not TkAgg
+    screen_y = mgr.canvas.height()
+elif backend == "TkAgg":
+    screen_x, screen_y = mgr.window.wm_maxsize()  # Creates temporary full-screen window. Works for TkAgg but not Qt5Agg
+else:
+    # Make default assumption
+    print('Unable to determine screen resolution. Will default to 1024')
+    screen_y = 1024
+
+plt.close()  # Close temporary window
+
+
+print('Screen y resolution is: ' + str(screen_y))
 screen_y = screen_y - 50  # Subtract a small amount or else the toolbar at bottom will mess things up.
 
 while True:
