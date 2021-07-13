@@ -50,8 +50,17 @@ def color_to_HSV(w, s):  # Classical domain coloring
     S = s * np.ones(H.shape)  # Saturation = 1.0 always
 
     mag = np.absolute(w)  #
-    elas = 0.2 # Elasticity ... higher numbers give faster transition from dark to light
+    elas = 0.1 # Elasticity ... higher numbers give faster transition from dark to light
     range = 0.97  # Diff between max and min intensity. Should be slightly less than 1.0, otherwise low values will go completely black
+
+    # Create "step" in V
+    stepSize = 10
+    mag = np.log(mag) / np.log(stepSize)
+    mag = np.floor(mag)
+    mag = np.power(stepSize, mag)
+
+    # V = mag ^ 0.2 / (1 + mag ^ 0.2). This has the property that V(1/m) = 1 - V(m), i.e. inverting the function
+    # will produce a subtraction of V.
     V = 1 - range / (1 + mag ** elas)
 
     # Generate white "spokes" to accentuate pinwheel effect
@@ -61,7 +70,7 @@ def color_to_HSV(w, s):  # Classical domain coloring
     spokes = np.abs(spokes)
 
     # Create "spokes" variable that ranges from 0 to 1, with 1 being max spoke effect
-    spokeWidth = 0.20
+    spokeWidth = 0.067
     spokes = 1 - spokes/spokeWidth
     # Remove negative values
     spokes = np.where(spokes < 0, 0, spokes)
@@ -122,7 +131,13 @@ def RiemannPartial(s, partialSum):
         return 1
 
     for x in range(1,partialSum):
-        sum = sum + np.power(x + 1, -s)
+        if np.mod(x,2) == 0:
+            # Note that even though index is EVEN, the denominator is ODD,
+            # since it is 1/((x+1)^s)
+            sum = sum + np.power(x + 1, -s)
+        else:
+            # ODD index for EVEN denominators
+            sum = sum - np.power(x + 1, -s)
     return sum
 
 
@@ -132,17 +147,20 @@ def make_plot(selection, fig2):
     xCenter = 0
     yCenter = 0
 
-    if selection <= 6:
+    if selection > 0 & selection <= 6:
         rm.precompute_coeffs()
 
-    if selection == 1:
-        # Standard version
-        rsize = 30;
+    if selection == 0:
+        rsize = 10
+        plot_domain2(lambda z: z, re=[-rsize, rsize], im=[-rsize, rsize], title='$z$', N=320 / rsize)
+    elif selection == 1:
+        # Standard version, critical strip centered at (0,0)
+        rsize = 10;
         plot_domain2(lambda z: rm.Riemann(z),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize * 5, yCenter + rsize * 5],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=120/rsize)
+                     N=600/rsize/5)
     elif selection == 2:
         # Standard version, square
         rsize = 40;
@@ -150,7 +168,7 @@ def make_plot(selection, fig2):
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=240/rsize)
+                     N=600/rsize)
     elif selection == 3:
         # Standard, zoomed into 0.5 + 50j
         rsize = 2;
@@ -160,21 +178,21 @@ def make_plot(selection, fig2):
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize * 5, yCenter + rsize * 5],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=50/rsize)
+                     N=600/rsize/5)
     elif selection == 4:
         # Symmetric version, critical strip
         rsize = 30;
         plot_domain2(lambda z: rm.RiemannSymmetric(z), re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize * 5, yCenter + rsize * 5],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=200/rsize)
+                     N=600/rsize/5)
     elif selection == 5:
         # Symmetric version, square
-        rsize = 20;
+        rsize = 2;
         plot_domain2(lambda z: rm.RiemannSymmetric(z), re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=300/rsize)
+                     N=400/rsize)
     elif selection == 6:
         # Symmetric version, zoomed into 0.5 + 50j
         rsize = 2;
@@ -184,25 +202,25 @@ def make_plot(selection, fig2):
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize * 5, yCenter + rsize * 5],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=50/rsize)
+                     N=600/rsize/5)
     elif selection == 7:
-        # Gamma(s/2) function
+        # Gamma(s/2) function, vertical strip centered at (0,0)
         rsize = 30;
         plot_domain2(lambda z: gamma(z / 2),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize * 5, yCenter + rsize * 5],
                      title='gamma($z/2$)',
-                     N=100/rsize)
+                     N=600/rsize/5)
     elif selection == 8:
         # Gamma(s/2) function, square
-        rsize = 40;
-        plot_domain2(lambda z: gamma(z / 2),
+        rsize = 4;
+        plot_domain2(lambda z: gamma(z),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
-                     title='gamma($z/2$)',
-                     N=400/rsize)
+                     title='gamma($z$)',
+                     N=1200/rsize)
     elif selection == 9:
-        # Gamma(s/2) function, zoomed into 0.5 + 50j
+        # Gamma(s/2) function, zoomed in, centered at 0.5 + 50j
         rsize = 2;
         xCenter = 0.5;
         yCenter = 50;
@@ -210,7 +228,7 @@ def make_plot(selection, fig2):
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize * 5, yCenter + rsize * 5],
                      title='gamma($z/2$)',
-                     N=50/rsize)
+                     N=600/rsize/5)
     elif selection == 10:
         # sine function, square
         rsize = 10;
@@ -218,7 +236,7 @@ def make_plot(selection, fig2):
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
                      title='sin($z$)',
-                     N=200/rsize)
+                     N=600/rsize)
     elif selection == 11:
         # cosine function, square
         rsize = 20;
@@ -226,23 +244,23 @@ def make_plot(selection, fig2):
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
                      title='cos($z$)',
-                     N=200/rsize)
+                     N=600/rsize)
     elif selection == 12:
         # complex exponential function, square
         rsize = 40;
-        plot_domain2(lambda z: np.power(2, z),
+        plot_domain2(lambda z: np.power(3, z),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
-                     title='2^$z$',
-                     N=200/rsize)
+                     title='3^$z$',
+                     N=600/rsize)
     elif selection == 13:
         # complex power function, square
         rsize = 40;
-        plot_domain2(lambda z: np.power(z, 3-1j),
+        plot_domain2(lambda z: np.power(z, -3),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
-                     title='$z$^(3-1j)',
-                     N=200 / rsize)
+                     title='1/($z$^3)',
+                     N=600 / rsize)
     elif selection == 14:
         # pi ^ s/2
         rsize = 40;
@@ -252,37 +270,34 @@ def make_plot(selection, fig2):
                      title='$pi$^(z/2)',
                      N=200/rsize)
     elif selection == 15:
-        # pi ^ s/2
-        rsize = 60;
+        # Partial summation of Dirichlet eta function (alternating Riemann)
+        rsize = 20;
         global nextFlag, qFlag
 
-        for partialSum in range(20, 20, 5):
+        partialSum = 2
+        for x in range(1, 100):
             plot_domain2(lambda z: RiemannPartial(z, partialSum),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
                      title='Riemann partial sum ' + str(partialSum),
-                     N=160/rsize)
+                     N=120/rsize)
 
-            plt.pause(0.5)
+            partialSum = partialSum * 2
+            plt.pause(0.2)
 
             continue
 
-            nextFlag = False
-            while True:
-                if qFlag:
-                    break
-                if nextFlag:
-                    break
-                plt.pause(0.05)
+    elif selection == 16:
+        # This is the function that converts Riemann zeta to Dirichlet eta function
+        # 1 - 2 ^ (1-s)
+        rsize = 40;
+        plot_domain2(lambda z: 1 - np.power(2, 1 - z),
+                     re=[xCenter - rsize, xCenter + rsize],
+                     im=[yCenter - rsize, yCenter + rsize],
+                     title='1-2^(1-$z$)',
+                     N=400 / rsize)
 
-plt.rcParams['figure.figsize'] = 6, 6
-plt.tight_layout()
 
-rsize = 10
-plot_domain2(lambda z: z, re=[-rsize, rsize], im=[-rsize, rsize], title='$z$', N=160/rsize)
-plt.gca().figure.canvas.mpl_connect('key_press_event', on_keypress)
-
-plt.pause(0.001)
 
 while True:
     print('Select plot type:\n'
@@ -300,7 +315,8 @@ while True:
           '12. Complex exponential\n'
           '13. Complex power\n'
           '14. Exponential: pi^(z/2)\n'
-          '15. Riemann partial sum')
+          '15. Riemann partial sum\n'
+          '16. 1 - 2 ^ (1-s)')
     selection = input("Select type: ")
     selection = int(selection)
 
@@ -310,9 +326,12 @@ while True:
     plt.rcParams['figure.figsize'] = 12, 12
     fig2 = plt.figure()
     fig2.canvas.mpl_connect('key_press_event', on_keypress)
+#    plt.gca().figure.canvas.mpl_connect('key_press_event', on_keypress)
 
     # Make smaller margins
-    plt.subplots_adjust(left=0.04, right=0.99, top=0.99, bottom=0.05)
+    plt.tight_layout()
+    # Make even smaller margins
+    plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
 
     # Draw plot
     make_plot(selection,fig2)
