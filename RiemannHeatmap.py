@@ -37,7 +37,7 @@ def eval_grid(f, re, im, N):
     z = x + 1j * y
 
     rm.callCount = 0
-    print('Mesh has ' + str(np.size(z)/1000) + 'k points')
+    print('Mesh has ' + str(int(resL)) + "x" + str(int(resH)) + "=" + str(np.size(z)/1000) + 'k points')
     return f(z)
 
 
