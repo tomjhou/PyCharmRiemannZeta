@@ -22,6 +22,15 @@ def Hcomplex(z):
 def g(x):
     return (1 - 1 / (1 + x ** 2)) ** 0.2
 
+def fmt(n: np.float64):
+    if n >= 500000:
+        return '{:1.2f}'.format(n/1000000) + 'M'
+
+    if n >= 1000:
+        return '[{:+1.2f}]'.format(n) + 'K'
+
+    return str(n)
+
 # Evaluates complex function f at nodes of grid determined by re, im, and N
 #   re=(a, b) and im=(c, d), are pairs of real numbers that define limits of rectangular region.
 #   N is a real number specifying grid points per unit interval.
@@ -37,7 +46,7 @@ def eval_grid(f, re, im, N):
     z = x + 1j * y
 
     rm.callCount = 0
-    print('Mesh has ' + str(int(resL)) + "x" + str(int(resH)) + "=" + str(np.size(z)/1000) + 'k points')
+    print('Mesh has ' + str(int(resL)) + " x " + str(int(resH)) + " = " + fmt(np.size(z)) + ' points')
     return f(z)
 
 
