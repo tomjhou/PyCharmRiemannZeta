@@ -7,25 +7,19 @@ from matplotlib.widgets import Button
 
 class ButtonManager:
 
-    def __init__(self, num_buttons=5, _is_vertical = True):
+    def __init__(self, num_buttons=5, numcols=2):
 
-        self.USE_VERTICAL_BUTTON_PANEL = _is_vertical   # Stack buttons vertically instead of horizontally
         self.BUTTON_GAP = 0.01                  # Space (as fraction of screen) between buttons
 
         # Button dimensions are all expressed as fraction of window size
-        if self.USE_VERTICAL_BUTTON_PANEL:
-            self.BUTTON_Y_COORD = 0.9
-            self.BUTTON_HEIGHT = 0.8 / num_buttons
-            self.BUTTON_WIDTH = 0.75
-            self.BUTTON_X_START = 0.125
-        else:
-            self.BUTTON_Y_COORD = 0.1  # 0.95
-            self.BUTTON_HEIGHT = 0.8  # 0.03  # Above about 0.1, buttons disappear - presumably they collide with graphs?
-            self.BUTTON_WIDTH = 0.9 / num_buttons
-            self.BUTTON_X_START = 0.05
+        self.BUTTON_Y_START = 0.9
+        self.BUTTON_HEIGHT = 0.8 / num_buttons
+        self.BUTTON_WIDTH = 0.4
+        self.BUTTON_X_GAP = 0.05
+        self.BUTTON_X_START = (1 - self.BUTTON_WIDTH * numcols - self.BUTTON_X_GAP * (numcols-1)) / 2
 
         self.buttonX = self.BUTTON_X_START
-        self.buttonY = self.BUTTON_Y_COORD
+        self.buttonY = self.BUTTON_Y_START
 
         # Create figure 1 for main plots
         self.fig1 = None
@@ -57,10 +51,7 @@ class ButtonManager:
 
         screen_y_adj = int(self.screen_y * .95)  # Reduce height about 5% so we don't overlap windows taskbar
 
-        if self.USE_VERTICAL_BUTTON_PANEL:
-            self.fig2.set_size_inches(screen_y_adj / self.dpi / 5, screen_y_adj / self.dpi / 2)
-        else:
-            self.fig2.set_size_inches(screen_y_adj / self.dpi / 2, screen_y_adj / self.dpi / 15)
+        self.fig2.set_size_inches(screen_y_adj / self.dpi / 3, screen_y_adj / self.dpi / 2)
 
         self.canvas2 = self.fig2.canvas
         # Put button window at top left of screen
@@ -81,12 +72,8 @@ class ButtonManager:
 
         screen_y_adj = int(self.screen_y * .95)  # Reduce height about 5% so we don't overlap windows taskbar
 
-        if self.USE_VERTICAL_BUTTON_PANEL:
-            # Move plot window to the right to avoid overlapping buttons
-            self.move_window(self.canvas1, screen_y_adj * .3, 0)
-        else:
-            # Move plot window to the right to avoid overlapping buttons
-            self.move_window(self.canvas1, screen_y_adj * .6, 0)
+        # Move plot window to the right to avoid overlapping buttons
+        self.move_window(self.canvas1, screen_y_adj * .3, 0)
 
         return self.fig1
 
@@ -97,9 +84,18 @@ class ButtonManager:
         # Make large square window for main plots
         fig.set_size_inches(screen_y_adj * xsize / self.dpi, screen_y_adj * ysize / self.dpi)
 
-    def add_id_button(self, text, id):
+    def reset_button_coord(self, col=0):
+        # Call this whenever you start a new column of buttons
+        self.buttonX = self.BUTTON_X_START + (self.BUTTON_WIDTH + self.BUTTON_X_GAP)*col
+        self.buttonY = self.BUTTON_Y_START
 
-        return Button2(self.next_button_axis(), text, id)
+    def add_blank(self, col=0):
+        # Add blank space
+        self.increment_row()
+
+    def add_id_button(self, text, _id):
+
+        return Button2(self.next_button_axis(), text, _id)
 
     def add_standard_button(self, text):
 
@@ -116,22 +112,20 @@ class ButtonManager:
         ax = widgets.TextBox(self.next_button_axis(), label)
         return ax
 
-    def add_slider(self, label):
+    def add_id_slider(self, _id, _min=0, _max=1):
 
-        ax = widgets.Slider(self.next_button_axis(), label, 0, 1)
+        ax = Slider2(self.next_button_axis(), _id, _min, _max)
         return ax
 
     def next_button_axis(self):
         # Generate axes for the next button in series (either horizontal or vertical row)
         ax = plt.axes([self.buttonX, self.buttonY, self.BUTTON_WIDTH, self.BUTTON_HEIGHT])
-
-        # Increment coordinates in preparation for next call
-        if self.USE_VERTICAL_BUTTON_PANEL:
-            self.buttonY = self.buttonY - self.BUTTON_HEIGHT - self.BUTTON_GAP
-        else:
-            self.buttonX = self.buttonX + self.BUTTON_WIDTH + self.BUTTON_GAP
-
+        self.increment_row()
         return ax
+
+    def increment_row(self):
+        # Increment coordinates in preparation for next call
+        self.buttonY = self.buttonY - self.BUTTON_HEIGHT - self.BUTTON_GAP
 
     def move_window(self, canvas, x, y): # x and y are in pixels
 
@@ -150,9 +144,22 @@ class Button2(Button):
     # Implements Button with ID value (useful when there is a long list of buttons)
     #
 
-    def __init__(self, ax, label, id):
+    def __init__(self, ax, label, _id):
         """
         """
         Button.__init__(self, ax, label, color='0.85', hovercolor='0.95')
 
-        self.id = id
+        self.id = _id
+
+
+class Slider2(widgets.Slider):
+    #
+    # Implements Button with ID value (useful when there is a long list of buttons)
+    #
+
+    def __init__(self, ax, _id, _min, _max):
+        """
+        """
+        widgets.Slider.__init__(self, ax, "", _min, _max, 0.75)
+
+        self.id = _id

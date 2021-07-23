@@ -65,11 +65,11 @@ def printStatus():
 # Note that convergence is very poor for Re(s) large and negative. So we use the functional equation
 # for Re(s) < 0.
 #
-def Riemann(s, getArraySize=False):
+def Riemann(s, getArraySize=False, do_eta=False):
     global callCount
 
     if np.size(s) > 1:
-        return [Riemann(x) for x in s]
+        return [Riemann(x,do_eta=do_eta) for x in s]
 
     if s == 1.0:
         # Calculation blows up at 1.0, so return nan
@@ -77,8 +77,12 @@ def Riemann(s, getArraySize=False):
         return np.nan
 
     if np.real(s) < 0:
+        if do_eta:
         # Use functional equation. Don't call printstatus yet
-        return Riemann(1-s)*gamma(1-s)*np.sin(s*np.pi/2)*(np.pi**(s-1))*(2**s)
+            return -s * Riemann(1 - s, do_eta=do_eta) * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) * (1 - 2 ** (s-1))/(1-2**s)
+        else:
+            # Use functional equation. Don't call printstatus yet
+            return Riemann(1 - s, do_eta=do_eta)*gamma(1-s)*np.sin(s*np.pi/2)*(np.pi**(s-1))*(2**s)
 
     cumSum = 0 + 0j
     # Need first element zero so line segment will draw correctly
@@ -86,8 +90,12 @@ def Riemann(s, getArraySize=False):
     if storeIntermediates:
         outArray[0] = cumSum
     plotNum = 1
-    # Scale factor converts Dirichlet eta function to Riemann zeta function
-    scale1 = 1/(1 - 2 ** (1 - s))
+
+    if do_eta:
+        scale1 = 1
+    else:
+        # Scale factor converts Dirichlet eta function to Riemann zeta function
+        scale1 = 1/(1 - 2 ** (1 - s))
 
     # Calculate terms of Dirichlet eta function, then apply scale1 factor to get Riemann zeta
     for k in range(0, RIEMANN_ITER_LIMIT):
