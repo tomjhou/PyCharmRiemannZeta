@@ -69,7 +69,7 @@ def color_to_HSV(w, s):  # Classical domain coloring
     mag = np.absolute(w)  #
     mag = np.where(mag < 1e-323, 1e-323, mag)  # To avoid divide by zero errors, impose a min magnitude
     elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
-    intensity_range = 0.97  # Diff between max and min intensity. Should be slightly less than 1.0, otherwise low values will go completely black
+    intensity_range = 0.97  # Diff between max, min intensity. Should be slightly <1.0, otherwise low values go black
 
     # Create steps in V, so we will get magnitude contours representing factors of 10 change in magnitude
     step_size = 10
@@ -112,16 +112,26 @@ def color_to_HSV(w, s):  # Classical domain coloring
 REUSE_FIGURE = False
 
 
-# Creates figure, then calls plot_domain with standard color function and saturation.
+# Creates figure, then calls plot_domain with standard options
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title='', n=200):  # Number of points per unit interval)
     global REUSE_FIGURE
+
     if not REUSE_FIGURE:
+        # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
         fig = bmgr.make_plot_fig(SCALE * aspect, SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
         plt.pause(.001)
+        # Clear flag so that we only reuse once. If we want to
+        # reuse again, caller must set flag again
         REUSE_FIGURE = False
+
+    t1 = time.time()
+
     plot_domain(color_to_HSV, f, re, im, title, 1, n, True)
+
+    # Report time delay
+    print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -178,7 +188,7 @@ def make_plot(_selection, screen_y):
     x_center = 0
     y_center = 0
 
-    if 0 < _selection <= 6:
+    if (0 < _selection <= 6) or (_selection == 17):
         rm.precompute_coeffs()
 
     print('Please wait while computing heatmap... (this may take a minute or two)')
@@ -341,7 +351,6 @@ def make_plot(_selection, screen_y):
     elif _selection == 17:
         #  Dirichlet Eta instead of Riemann zeta
         mesh_size = 30
-        rm.precompute_coeffs()
         plot_domain2(lambda z: rm.Riemann(z, do_eta=True),
                      re=[x_center - 1, x_center + 2],
                      im=[y_center, y_center + 2 * mesh_size],
