@@ -309,7 +309,7 @@ print(mpl.rcsetup.all_backends)
 mpl.use('TkAgg')    # Generally I prefer this. It is faster, and temporary window seems to close more reliably (on Win and MacOS)
 # mpl.use('Qt5Agg')  # Sometimes this is slower. Need to install PyQt5 for this to work. Temporary window won't close under MacOS
 backend = mpl.get_backend()
-print("Matplotlib backend is: " + backend) # Returns Qt5Agg after installing Qt5 ... if you don't have Qt5, I think it returns TkAgg something
+print("Matplotlib backend is: " + backend) # Returns Qt5Agg after installing PyQt5 ... if you don't have Qt5, I think it returns TkAgg something
 
 # Get screen height in pixels. Somehow, this always requires creating a temporary window. Is there something more elegant?
 mgr = plt.get_current_fig_manager()
