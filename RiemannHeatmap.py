@@ -8,8 +8,10 @@ from matplotlib.colors import hsv_to_rgb
 import RiemannMath as rm
 from scipy.special import gamma
 import time
+import ButtonManager as bm
 
 rm.RIEMANN_ITER_LIMIT = 80
+USE_BUTTON_PANEL = True
 
 print('Done importing libraries')
 
@@ -27,7 +29,7 @@ def fmt(n: np.float64):
         return '{:1.2f}'.format(n/1000000) + 'M'
 
     if n >= 1000:
-        return '[{:+1.2f}]'.format(n) + 'K'
+        return '[{:+1.2f}]'.format(n/1000) + 'K'
 
     return str(n)
 
@@ -134,6 +136,7 @@ def on_keypress(event):
     global qFlag, nextFlag
     if event.key == "x":
         qFlag = True
+        print("User pressed x on keyboard")
     if event.key == "n":
         nextFlag = True
 
@@ -169,10 +172,10 @@ def make_plot(selection, screen_y):
         plot_domain2(lambda z: z, re=[-rsize, rsize], im=[-rsize, rsize], title='$z$', N=screen_y / 2 / rsize)
     elif selection == 1:
         # Standard version, critical strip centered at (0,0)
-        rsize = 10;
+        rsize = 20;
         plot_domain2(lambda z: rm.Riemann(z),
-                     re=[xCenter - rsize, xCenter + rsize],
-                     im=[yCenter - rsize * 5, yCenter + rsize * 5],
+                     re=[xCenter - rsize / 10, xCenter + rsize/10],
+                     im=[yCenter - rsize, yCenter + rsize],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
                      N=screen_y/rsize/5)
     elif selection == 2:
@@ -285,16 +288,17 @@ def make_plot(selection, screen_y):
                      N=screen_y/rsize)
     elif selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
+        # This sum converges for Re(s) > 0
         rsize = 20;
         global nextFlag, qFlag
 
         partialSum = 2
         for x in range(1, 100):
             plot_domain2(lambda z: RiemannPartial(z, partialSum),
-                     re=[xCenter - rsize, xCenter + rsize],
+                     re=[xCenter, xCenter + 2],
                      im=[yCenter - rsize, yCenter + rsize],
                      title='Riemann partial sum ' + str(partialSum),
-                     N=screen_y/4/rsize)
+                     N=screen_y/rsize)
 
             partialSum = partialSum * 2
             plt.pause(0.2)
@@ -313,80 +317,167 @@ def make_plot(selection, screen_y):
 
     print()   # Riemann prints updates periodically - add newline in case Riemann did not
 
-print("Available backends:")
-print(mpl.rcsetup.all_backends)
-mpl.use('TkAgg')    # Generally I prefer this. It is faster, and temporary window seems to close more reliably (on Win and MacOS)
-# mpl.use('Qt5Agg')  # Sometimes this is slower. Need to install PyQt5 for this to work. Temporary window won't close under MacOS
-backend = mpl.get_backend()
-print("Matplotlib backend is: " + backend) # Returns Qt5Agg after installing PyQt5 ... if you don't have Qt5, I think it returns TkAgg something
+screen_y = None
 
-# Get screen height in pixels. Somehow, this always requires creating a temporary window. Is there something more elegant?
-mgr = plt.get_current_fig_manager()
-if backend == "Qt5Agg":
-    mgr.full_screen_toggle()  # This creates a temporary full-screen window. Works for Qt5Agg but not TkAgg
-    screen_y = mgr.canvas.height()
-elif backend == "TkAgg":
-    screen_x, screen_y = mgr.window.wm_maxsize()  # Creates temporary full-screen window. Works for TkAgg but not Qt5Agg
+mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
+# mpl.use('Qt5Agg')  # Sometimes slower. Need to install PyQt5. Temporary window won't close under MacOS. Windows might resize when moved
+
+if not USE_BUTTON_PANEL:
+    print("Available backends:")
+    print(mpl.rcsetup.all_backends)
+    backend = mpl.get_backend()
+    print("Matplotlib backend is: " + backend) # Returns Qt5Agg after installing PyQt5 ... if you don't have Qt5, I think it returns TkAgg something
+
+    # Get screen height in pixels. Somehow, this always requires creating a temporary window. Is there something more elegant?
+    mgr = plt.get_current_fig_manager()
+    if backend == "Qt5Agg":
+        mgr.full_screen_toggle()  # This creates a temporary full-screen window. Works for Qt5Agg but not TkAgg
+        screen_y = mgr.canvas.height()
+    elif backend == "TkAgg":
+        screen_x, screen_y = mgr.window.wm_maxsize()  # Creates temporary full-screen window. Works for TkAgg but not Qt5Agg
+    else:
+        # Make default assumption
+        print('Unable to determine screen resolution. Will default to 1024')
+        screen_y = 1024
+
+    plt.close()  # Close temporary window. On MacOS and Qt5, this doesn't seem to work until next window is created. On Windows or TkAgg, it is fine.
+    plt.pause(0.01)  # This is not necessary.
+
+    print('Screen y resolution is: ' + str(screen_y))
+    screen_y = screen_y - 50  # Subtract a small amount or else the toolbar at bottom will mess things up.
+
+
+bmgr = None
+
+SCALE = 0.5
+
+def make_fig_plot(event, id):
+    fig = bmgr.make_plot_fig(SCALE)
+    fig.canvas.mpl_connect('key_press_event', on_keypress)
+    plt.pause(.001)
+    make_plot(id, screen_y * SCALE * resolution)
+    plt.pause(.001)
+
+
+def do_quit(event):
+    global qFlag
+    qFlag = True
+
+
+def submit(text):
+    print("Text entry: " + text)
+
+
+resolution = 1.0
+
+def slider_update(val):
+    global resolution
+#    print("slider: " + str(val))
+    resolution = val
+
+
+button_list = [None] * 20
+
+
+def AddGraphingButton(text, id):
+    print("adding button: " + text + ", " + str(id))
+    button_list[id] = bmgr.add_id_button(text, id)
+    button_list[id].on_clicked(lambda x: make_fig_plot(x, button_list[id].id))
+
+
+if USE_BUTTON_PANEL:
+
+    # New button-based GUI selection method
+    plot_list = {
+        0:"Pinwheel",
+        1:"Riemann, strip",
+        4:"Symmetric Riemann, strip",
+        8:"Gamma",
+        10:"Sine",
+        11:"Cosine",
+        12:"Exponential",
+        13:"Spiral",
+        15:"Riemann partial sum",
+        16:"1 - 2 ^ (1-s)"
+    }
+
+    bmgr = bm.ButtonManager(15)
+    screen_y = bmgr.screen_y
+
+    b1 = bmgr.add_textbox("")
+    b1.on_submit(submit)
+
+    b3 = bmgr.add_slider("Var")
+    b3.on_changed(slider_update)
+
+    for k in plot_list:
+        AddGraphingButton(plot_list[k], k)
+
+    b2 = bmgr.add_standard_button("Quit")
+    b2.on_clicked(do_quit)
+
+    # Button figure also responds to key press - "x" to exit
+    bmgr.canvas2.mpl_connect('key_press_event', on_keypress)
+
+    plt.pause(0.01)
+
+    while not qFlag:
+        bmgr.canvas2.flush_events()
+#        plt.pause(0.001) # This causes new plots to permanently overlay older ones
+        time.sleep(0.025)  # This allows plots to be moved around more freely
+
 else:
-    # Make default assumption
-    print('Unable to determine screen resolution. Will default to 1024')
-    screen_y = 1024
 
-plt.close()  # Close temporary window. On MacOS and Qt5, this doesn't seem to work until next window is created. On Windows or TkAgg, it is fine.
-plt.pause(0.01)  # This is not necessary.
-
-print('Screen y resolution is: ' + str(screen_y))
-screen_y = screen_y - 50  # Subtract a small amount or else the toolbar at bottom will mess things up.
-
-while True:
-    print('Select plot type:\n'
-          '0. Pinwheel\n'
-          '1. Standard Riemann, critical strip (30 sec)\n'
-          '2. Standard Riemann, large square (31 sec)\n'
-          '3. Standard Riemann, zoomed critical strip\n'
-          '4. Symmetric Riemann, critical strip (47 sec)\n'
-          '5. Symmetric Riemann, large square (31 sec)\n'
-          '6. Symmetric Riemann, zoomed critical strip\n'
-          '7. Gamma, critical strip\n'
-          '8. Gamma, large square\n'
-          '9. Gamma, zoomed critical strip\n'
-          '10. sin function, large square\n'
-          '11. cos function, large square\n'
-          '12. Complex exponential\n'
-          '13. Complex power spirals\n'
-          '14. Exponential: pi^(z/2)\n'
-          '15. Riemann partial sum\n'
-          '16. 1 - 2 ^ (1-s)')
-    selection = input("Select type: ")
-    selection = int(selection)
-
-    t1 = time.time()
-
-    # Create blank figure
-    plt.rcParams['figure.figsize'] = 12, 12
-    fig2 = plt.figure()
-    fig2.canvas.mpl_connect('key_press_event', on_keypress)
-#    plt.gca().figure.canvas.mpl_connect('key_press_event', on_keypress)
-
-    # Make smaller margins
-    plt.tight_layout()
-    # Make even smaller margins
-    plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
-
-    # Draw plot
-    make_plot(selection, screen_y)
-
-    # Report time delay
-    print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
-
-    print("Press x to exit, n for next plot (focus must be on Riemann window)")
-    nextFlag = False
+    # Old text-based selection method
     while True:
-      if qFlag:
-          break
-      if nextFlag:
-          break
-      plt.pause(0.05)
+        print('Select plot type:\n'
+              '0. Pinwheel\n'
+              '1. Standard Riemann, critical strip (30 sec)\n'
+              '2. Standard Riemann, large square (31 sec)\n'
+              '3. Standard Riemann, zoomed critical strip\n'
+              '4. Symmetric Riemann, critical strip (47 sec)\n'
+              '5. Symmetric Riemann, large square (31 sec)\n'
+              '6. Symmetric Riemann, zoomed critical strip\n'
+              '7. Gamma, critical strip\n'
+              '8. Gamma, large square\n'
+              '9. Gamma, zoomed critical strip\n'
+              '10. sin function, large square\n'
+              '11. cos function, large square\n'
+              '12. Complex exponential\n'
+              '13. Complex power spirals\n'
+              '14. Exponential: pi^(z/2)\n'
+              '15. Riemann partial sum\n'
+              '16. 1 - 2 ^ (1-s)')
+        selection = input("Select type: ")
+        selection = int(selection)
 
-    if qFlag:
-        break
+        t1 = time.time()
+
+        # Create blank figure
+        plt.rcParams['figure.figsize'] = 12, 12
+        fig2 = plt.figure()
+        fig2.canvas.mpl_connect('key_press_event', on_keypress)
+    #    plt.gca().figure.canvas.mpl_connect('key_press_event', on_keypress)
+
+        # Make smaller margins
+        plt.tight_layout()
+        # Make even smaller margins
+        plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
+
+        # Draw plot
+        make_plot(selection, screen_y)
+
+        # Report time delay
+        print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
+
+        print("Press x to exit, n for next plot (focus must be on Riemann window)")
+        nextFlag = False
+        while True:
+          if qFlag:
+              break
+          if nextFlag:
+              break
+          plt.pause(0.05)
+
+        if qFlag:
+            break
