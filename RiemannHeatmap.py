@@ -365,7 +365,6 @@ def make_plot(_selection, screen_y):
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
 
 
-
 def make_fig_plot(event, id):
     make_plot(id, screen_y * SCALE * resolution)
     plt.pause(.001)
@@ -376,8 +375,8 @@ def do_quit(event):
     qFlag = True
 
 
-def submit(text):
-    print("Text entry: " + text)
+def do_submit(text, _id):
+    print("Object id: " + str(_id) + ", entered: " + text)
 
 
 def slider_update(val):
@@ -392,17 +391,23 @@ def do_slider(val, id):
 
 button_list = [None] * 20
 slider_list = [None] * 20
+text_box_list = [None] * 20
 slider_val = [0] * 20
 
 
-def AddGraphingButton(text, id):
-    button_list[id] = bmgr.add_id_button(text, id)
-    button_list[id].on_clicked(lambda x: make_fig_plot(x, button_list[id].id))
+def AddGraphingButton(text, _id):
+    button_list[_id] = bmgr.add_id_button(text, _id)
+    button_list[_id].on_clicked(lambda x: make_fig_plot(x, button_list[_id].id))
 
 
-def AddSlider2(_id):
-    slider_list[_id] = bmgr.add_id_slider(_id)
+def AddIdSlider2(text, _id):
+    slider_list[_id] = bmgr.add_id_slider(text, _id)
     slider_list[_id].on_changed(lambda x: do_slider(x, slider_list[_id].id))
+
+
+def AddIdTextBox(text, _id):
+    text_box_list[_id] = bmgr.add_textbox(text, _id)
+    text_box_list[_id].on_submit(lambda x: do_submit(x, text_box_list[_id].id))
 
 
 screen_y = None
@@ -431,11 +436,12 @@ plot_list = {
     17: "Dirichlet eta"
 }
 
-bmgr = bm.ButtonManager(15)
+bmgr = bm.ButtonManager(16,2)
 screen_y = bmgr.screen_y
 
-b3 = bmgr.add_id_slider("Var")
-b3.on_changed(slider_update)
+bmgr.increment_row()
+bmgr.increment_row()
+bmgr.increment_row()
 
 for k in plot_list:
     AddGraphingButton(plot_list[k], k)
@@ -443,15 +449,19 @@ for k in plot_list:
 b2 = bmgr.add_standard_button("Quit")
 b2.on_clicked(do_quit)
 
-# Start second column
+#
+# Start second column of widgets
+#
 bmgr.reset_button_coord(1)
 
-b1 = bmgr.add_textbox("")
-b1.on_submit(submit)
+b3 = bmgr.add_id_slider("Resolution", 0)
+b3.on_changed(slider_update)
 
-#    bmgr.add_blank()
+AddIdTextBox("X-size", 0)
+AddIdTextBox("Y-size", 0)
+
 for k in plot_list:
-    AddSlider2(k)
+    AddIdSlider2("", k)
 
 # Button figure also responds to key press - "x" to exit
 bmgr.canvas2.mpl_connect('key_press_event', on_keypress)

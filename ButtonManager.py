@@ -7,16 +7,16 @@ from matplotlib.widgets import Button
 
 class ButtonManager:
 
-    def __init__(self, num_buttons=5, numcols=2):
+    def __init__(self, num_rows=5, num_cols=2):
 
         self.BUTTON_GAP = 0.01                  # Space (as fraction of screen) between buttons
 
         # Button dimensions are all expressed as fraction of window size
         self.BUTTON_Y_START = 0.9
-        self.BUTTON_HEIGHT = 0.8 / num_buttons
+        self.BUTTON_HEIGHT = 0.8 / num_rows
         self.BUTTON_WIDTH = 0.4
         self.BUTTON_X_GAP = 0.05
-        self.BUTTON_X_START = (1 - self.BUTTON_WIDTH * numcols - self.BUTTON_X_GAP * (numcols-1)) / 2
+        self.BUTTON_X_START = (1 - self.BUTTON_WIDTH * num_cols - self.BUTTON_X_GAP * (num_cols-1)) / 2
 
         self.buttonX = self.BUTTON_X_START
         self.buttonY = self.BUTTON_Y_START
@@ -57,12 +57,12 @@ class ButtonManager:
         # Put button window at top left of screen
         self.move_window(self.canvas2, 25, 25)
 
-    def make_plot_fig(self, xsize = 1.0, ysize = 1.0):
+    def make_plot_fig(self, x_size = 1.0, y_size = 1.0):
         # size parameters are as fraction of screen HEIGHT
 #        mpl.rcParams['toolbar'] = 'toolbar2'
 
         self.fig1 = plt.figure()
-        self.set_fig1_size(self.fig1, xsize, ysize)
+        self.set_fig1_size(self.fig1, x_size, y_size)
         self.canvas1 = self.fig1.canvas
 
         # Make smaller margins
@@ -107,14 +107,14 @@ class ButtonManager:
         ax = widgets.CheckButtons(self.next_button_axis(), text)
         return ax
 
-    def add_textbox(self, label):
+    def add_textbox(self, label, _id):
 
-        ax = widgets.TextBox(self.next_button_axis(), label)
+        ax = widgets.TextBox(self.next_button_axis(), label, _id)
         return ax
 
-    def add_id_slider(self, _id, _min=0, _max=1):
+    def add_id_slider(self, label, _id, _min=0, _max=1):
 
-        ax = Slider2(self.next_button_axis(), _id, _min, _max)
+        ax = Slider2(self.next_button_axis(), label, _id, _min, _max)
         return ax
 
     def next_button_axis(self):
@@ -157,9 +157,22 @@ class Slider2(widgets.Slider):
     # Implements Button with ID value (useful when there is a long list of buttons)
     #
 
-    def __init__(self, ax, _id, _min, _max):
+    def __init__(self, ax, label, _id, _min, _max):
         """
         """
-        widgets.Slider.__init__(self, ax, "", _min, _max, 0.75)
+        widgets.Slider.__init__(self, ax, label, _min, _max, 0.75)
+
+        self.id = _id
+
+
+class TextBox2(widgets.TextBox):
+    #
+    # Implements Button with ID value (useful when there is a long list of buttons)
+    #
+
+    def __init__(self, ax, label, _id):
+        """
+        """
+        widgets.Slider.__init__(self, ax, label)
 
         self.id = _id
