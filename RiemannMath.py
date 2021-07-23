@@ -6,9 +6,10 @@ callCount = 0
 
 outArray = []
 
-RIEMANN_ITER_LIMIT = 150 # Default. Can be overridden
+RIEMANN_ITER_LIMIT = 150  # Default. Can be overridden
 NK2_array = []
 NK1_array = []
+
 
 # Precompute table of coefficients for lookup. This reduces Riemann computation time from O(n^2) to O(n)
 def precompute_coeffs():
@@ -18,7 +19,7 @@ def precompute_coeffs():
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
     NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT))
-    NK1_array[0,0] = 0.5 # This will be (n_choose_k) / 2^(n+1)
+    NK1_array[0,0] = 0.5  # This will be (n_choose_k) / 2^(n+1)
     for n in range(1, RIEMANN_ITER_LIMIT):
         NK1_array[n,0] = NK1_array[n-1,0] / 2
         for k in range(1, n+1):
@@ -29,22 +30,25 @@ def precompute_coeffs():
     for k in range(0, RIEMANN_ITER_LIMIT):
         tmpSum = 0
         for n in range(k, RIEMANN_ITER_LIMIT):
-            tmpSum += NK1_array[n,k] # comb(n,k) / (2 ** (n+1))
+            tmpSum += NK1_array[n,k]  # comb(n,k) / (2 ** (n+1))
         NK2_array[k] = ((-1) ** k) * tmpSum
 
     print("Done precomputing coefficients\n")
+
 
 def EtaToZetaScale(v):
     # Scale factor converts Dirichlet eta function to Riemann zeta function
     return 1/(1 - 2 ** (1-v))
 
-def printStatus():
+
+def print_status():
     global callCount
     callCount = callCount + 1
     if np.mod(callCount, 100000) == 0:
         print(str(int(callCount/1000)) + "k ", end='')  # Print status every 100k samples
     if np.mod(callCount, 1000000) == 0:
         print()  # Add newline every 1M samples
+
 
 
 #
@@ -66,57 +70,67 @@ def printStatus():
 # for Re(s) < 0.
 #
 def Riemann(s, getArraySize=False, do_eta=False):
-    global callCount
+    global callCount, precomputed_func
 
     if np.size(s) > 1:
         return [Riemann(x,do_eta=do_eta) for x in s]
 
     if s == 1.0:
         # Calculation blows up at 1.0, so return nan
-        printStatus()
+        print_status()
         return np.nan
 
     if np.real(s) < 0:
         if do_eta:
-        # Use functional equation. Don't call printstatus yet
+            # Use functional equation. Don't call printstatus yet
             return -s * Riemann(1 - s, do_eta=do_eta) * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) * (1 - 2 ** (s-1))/(1-2**s)
         else:
             # Use functional equation. Don't call printstatus yet
             return Riemann(1 - s, do_eta=do_eta)*gamma(1-s)*np.sin(s*np.pi/2)*(np.pi**(s-1))*(2**s)
 
-    cumSum = 0 + 0j
+    cum_sum = 0 + 0j
     # Need first element zero so line segment will draw correctly
-    storeIntermediates = not getArraySize and len(outArray) > 0
-    if storeIntermediates:
-        outArray[0] = cumSum
-    plotNum = 1
+    store_intermediates = not getArraySize and len(outArray) > 0
+    if store_intermediates:
+        outArray[0] = cum_sum
+    plot_num = 1
 
     if do_eta:
         scale1 = 1
     else:
         # Scale factor converts Dirichlet eta function to Riemann zeta function
-        scale1 = 1/(1 - 2 ** (1 - s))
+        scale1 = 1 / (1 - 2 ** (1 - s))
 
-    # Calculate terms of Dirichlet eta function, then apply scale1 factor to get Riemann zeta
-    for k in range(0, RIEMANN_ITER_LIMIT):
-        cumSum = cumSum + scale1 * NK2_array[k] / ((k + 1) ** s)
-        if k < 600 or np.mod(k, 2) == 0: # After first 600 points, only plot every other point, to speed up graphics. Should get rid of this, now that graphics have been sped up with draw_artist
-            if storeIntermediates:
-                outArray[plotNum] = cumSum
-            plotNum = plotNum + 1
+    if store_intermediates:
+
+        # Calculate terms of Dirichlet eta function, then apply scale1 factor to get Riemann zeta
+        for k in range(0, RIEMANN_ITER_LIMIT):
+            cum_sum = cum_sum + scale1 * NK2_array[k] / ((k + 1) ** s)
+            if k < 600 or np.mod(k, 2) == 0: # After first 600 points, only plot every other point, to speed up graphics. Should get rid of this, now that graphics have been sped up with draw_artist
+                outArray[plot_num] = cum_sum
+                plot_num = plot_num + 1
+    else:
+
+        # Calculate terms of Dirichlet eta function, then apply scale1 factor to get Riemann zeta
+        for k in range(0, RIEMANN_ITER_LIMIT):
+            cum_sum = cum_sum + NK2_array[k] / ((k + 1) ** s)
+
+        if not do_eta:
+            # Scale factor converts Dirichlet eta function to Riemann zeta function
+            cum_sum = cum_sum * scale1
 
     # Make sure final point is included
     if np.mod(RIEMANN_ITER_LIMIT - 1, 10) != 0:
-        if storeIntermediates:
-            outArray[plotNum] = cumSum
-        plotNum = plotNum + 1
+        if store_intermediates:
+            outArray[plot_num] = cum_sum
+        plot_num = plot_num + 1
 
-    printStatus()
+    print_status()
 
     if getArraySize:
-        return cumSum, plotNum
+        return cum_sum, plot_num
     else:
-        return cumSum
+        return cum_sum
 
 
 #

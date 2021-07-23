@@ -18,8 +18,8 @@ print('Done importing libraries')
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
 def Hcomplex(z):
-    H = np.angle(z) / (2 * np.pi) + 1  # Add 1 to avoid negative values.
-    return np.mod(H, 1)  # mod returns remainder. This is equivalent to taking decimal portion
+    h = np.angle(z) / (2 * np.pi) + 1  # Add 1 to avoid negative values.
+    return np.mod(h, 1)  # mod returns remainder. This is equivalent to taking decimal portion
 
 
 def g(x):
@@ -39,19 +39,19 @@ def fmt(n: np.float64):
 # Evaluates complex function f at nodes of grid determined by re, im, and N
 #   re=(a, b) and im=(c, d), are pairs of real numbers that define limits of rectangular region.
 #   N is a real number specifying grid points per unit interval.
-def eval_grid(f, re, im, N):
+def eval_grid(f, re, im, n):
     l = re[1] - re[0]
     h = im[1] - im[0]
-    resL = N * l  # horizontal resolution
-    resH = N * h  # vertical resolution
-    x = np.linspace(re[0], re[1], int(resL))
-    y = np.linspace(im[0], im[1], int(resH))
+    res_l = n * l  # horizontal resolution
+    res_h = n * h  # vertical resolution
+    x = np.linspace(re[0], re[1], int(res_l))
+    y = np.linspace(im[0], im[1], int(res_h))
     x, y = np.meshgrid(x, y)
     z = x + 1j * y
 
     rm.callCount = 0
-    print('Mesh has ' + str(int(resL)) + " x " + str(int(resH)) + " = " + fmt(np.size(z)) + ' points')
-    return f(z)
+    print('Mesh has ' + str(int(res_l)) + " x " + str(int(res_h)) + " = " + fmt(np.size(z)) + ' points')
+    return f(z), z
 
 
 # This is the color-generating function that is passed to plot_domain().
@@ -79,11 +79,11 @@ def color_to_HSV(w, s):  # Classical domain coloring
 
     # V = mag ^ 0.2 / (1 + mag ^ 0.2). This has the property that V(1/m) = 1 - V(m).
     # Hence, V[f^-1(s)] = 1 - V[f(s)]
-    V = 1 - intensity_range / (1 + mag ** elas)
+    v = 1 - intensity_range / (1 + mag ** elas)
 
     # Generate white "spokes" to accentuate pinwheel effect
-    numSpokes = 6
-    spokes = np.mod(H * numSpokes, 1)
+    num_spokes = 6
+    spokes = np.mod(H * num_spokes, 1)
     spokes = np.where(spokes > 0.5, spokes - 1, spokes)
     spokes = np.abs(spokes)
 
@@ -99,12 +99,12 @@ def color_to_HSV(w, s):  # Classical domain coloring
     # Saturation becomes zero when spokes == 1
     S = 1 - spokes
     # Intensity becomes 1 when spokes == 1
-    V = np.where(spokes <= 1, V + (1 - V) * spokes, V)
+    v = np.where(spokes <= 1, v + (1 - v) * spokes, v)
 
     # V = np.ones(H.shape)
     # the points mapped to infinity are colored with white; hsv_to_rgb(0, 0, 1)=(1, 1, 1)=white
 
-    HSV = np.dstack((H, S, V))
+    HSV = np.dstack((H, S, v))
     RGB = hsv_to_rgb(HSV)
     return RGB
 
@@ -128,24 +128,27 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title='', n=200):  # Number of point
 
     t1 = time.time()
 
-    plot_domain(color_to_HSV, f, re, im, title, 1, n, True)
+    mesh_size = plot_domain(color_to_HSV, f, re, im, title, 1, n, True)
 
     # Report time delay
-    print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
+    delay = time.time() - t1
+    print('Completed domain coloring plot in ' + str(delay) + ' seconds')
+    rate = mesh_size / delay
+    print('Rate: ' + fmt(rate) + ' points per second')
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
                 s=0.9,  # Saturation
                 n=200,  # Number of points per unit interval
-                daxis=None):  # Whether to show axis
+                show_axis=None):  # Whether to show axis
 
     # Evaluate function f on a grid of points
-    w = eval_grid(f, re, im, n)
+    w, mesh = eval_grid(f, re, im, n)
     domc = color_func(w, s)
     plt.xlabel("$\Re(z)$")
     plt.ylabel("$\Im(z)$")
     plt.title(title)
-    if daxis:
+    if show_axis:
         plt.imshow(domc, origin="lower",
                    extent=[re[0], re[1], im[0], im[1]])
 
@@ -153,18 +156,20 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
         plt.imshow(domc, origin="lower")
         plt.axis('off')
 
+    return np.size(mesh)
+
 
 qFlag = False
-nextFlag = False
+next_flag = False
 
 
 def on_keypress(event):
-    global qFlag, nextFlag
+    global qFlag, next_flag
     if event.key == "x":
         qFlag = True
         print("User pressed x on keyboard")
     if event.key == "n":
-        nextFlag = True
+        next_flag = True
 
 
 def RiemannPartial(s, partialSum):
@@ -319,7 +324,7 @@ def make_plot(_selection, screen_y):
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
         mesh_size = 30
-        global nextFlag, qFlag, REUSE_FIGURE
+        global next_flag, qFlag, REUSE_FIGURE
 
         partial_sum = 2
         for x in range(1, 100):
@@ -334,7 +339,7 @@ def make_plot(_selection, screen_y):
             partial_sum = partial_sum * 2
             plt.pause(0.2)
 
-            if nextFlag:
+            if next_flag:
                 break
 
         REUSE_FIGURE = False
@@ -359,41 +364,6 @@ def make_plot(_selection, screen_y):
 
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
 
-
-screen_y = None
-
-mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
-# mpl.use('Qt5Agg')  # Sometimes slower. Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved
-
-if not USE_BUTTON_PANEL:
-    print("Available backends:")
-    print(mpl.rcsetup.all_backends)
-    backend = mpl.get_backend()
-    print(
-        "Matplotlib backend is: " + backend)  # Returns Qt5Agg after installing PyQt5 ... if you don't have Qt5, I think it returns TkAgg something
-
-    # Get screen height in pixels by creating temporary window. Is there something more elegant?
-    mgr = plt.get_current_fig_manager()
-    if backend == "Qt5Agg":
-        mgr.full_screen_toggle()  # This creates a temporary full-screen window. Works for Qt5Agg but not TkAgg
-        screen_y = mgr.canvas.height()
-    elif backend == "TkAgg":
-        screen_x, screen_y = mgr.window.wm_maxsize()  # Works for TkAgg but not Qt5Agg
-    else:
-        # Make default assumption
-        print('Unable to determine screen resolution. Will default to 1024')
-        screen_y = 1024
-
-    plt.close()  # Close temp window. In Qt5 under MacOS, doesn't work until next window created. Windows/TkAgg are fine
-    plt.pause(0.01)  # This is not necessary.
-
-    print('Screen y resolution is: ' + str(screen_y))
-    screen_y = screen_y - 50  # Subtract a small amount or else the toolbar at bottom will mess things up.
-
-bmgr = None
-
-SCALE = 0.8  # Adjust plot size
-resolution = 0.5  # Adjust mesh points
 
 
 def make_fig_plot(event, id):
@@ -435,56 +405,66 @@ def AddSlider2(_id):
     slider_list[_id].on_changed(lambda x: do_slider(x, slider_list[_id].id))
 
 
-if USE_BUTTON_PANEL:
+screen_y = None
 
-    # New button-based GUI selection method
-    plot_list = {
-        0: "Pinwheel",
-        1: "Riemann, strip",
-        4: "Symmetric Riemann, strip",
-        8: "Gamma",
-        10: "Sine",
-        11: "Cosine",
-        12: "Exponential",
-        13: "Spiral",
-        15: "Riemann partial sum",
-        16: "1 - 2 ^ (1-s)",
-        17: "Dirichlet eta"
-    }
+mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
+#mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
 
-    bmgr = bm.ButtonManager(15)
-    screen_y = bmgr.screen_y
 
-    b3 = bmgr.add_id_slider("Var")
-    b3.on_changed(slider_update)
+bmgr = None
 
-    for k in plot_list:
-        AddGraphingButton(plot_list[k], k)
+SCALE = 0.8  # Adjust plot size
+resolution = 0.5  # Adjust mesh points
 
-    b2 = bmgr.add_standard_button("Quit")
-    b2.on_clicked(do_quit)
+# New button-based GUI selection method
+plot_list = {
+    0: "Pinwheel",
+    1: "Riemann, strip",
+    4: "Symmetric Riemann, strip",
+    8: "Gamma",
+    10: "Sine",
+    11: "Cosine",
+    12: "Exponential",
+    13: "Spiral",
+    15: "Riemann partial sum",
+    16: "1 - 2 ^ (1-s)",
+    17: "Dirichlet eta"
+}
 
-    # Start second column
-    bmgr.reset_button_coord(1)
+bmgr = bm.ButtonManager(15)
+screen_y = bmgr.screen_y
 
-    b1 = bmgr.add_textbox("")
-    b1.on_submit(submit)
+b3 = bmgr.add_id_slider("Var")
+b3.on_changed(slider_update)
 
-    #    bmgr.add_blank()
-    for k in plot_list:
-        AddSlider2(k)
+for k in plot_list:
+    AddGraphingButton(plot_list[k], k)
 
-    # Button figure also responds to key press - "x" to exit
-    bmgr.canvas2.mpl_connect('key_press_event', on_keypress)
+b2 = bmgr.add_standard_button("Quit")
+b2.on_clicked(do_quit)
 
-    plt.pause(0.01)
+# Start second column
+bmgr.reset_button_coord(1)
 
-    while not qFlag:
-        bmgr.canvas2.flush_events()
-        #        plt.pause(0.001) # This causes new plots to permanently overlay older ones
-        time.sleep(0.025)  # This allows plots to be moved around more freely
+b1 = bmgr.add_textbox("")
+b1.on_submit(submit)
 
-else:
+#    bmgr.add_blank()
+for k in plot_list:
+    AddSlider2(k)
+
+# Button figure also responds to key press - "x" to exit
+bmgr.canvas2.mpl_connect('key_press_event', on_keypress)
+
+plt.pause(0.01)
+
+while not qFlag:
+    bmgr.canvas2.flush_events()
+    #        plt.pause(0.001) # This causes new plots to permanently overlay older ones
+    time.sleep(0.025)  # This allows plots to be moved around more freely
+
+
+if False:
 
     # Old text-based selection method
     while True:
@@ -529,11 +509,11 @@ else:
         print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
 
         print("Press x to exit, n for next plot (focus must be on Riemann window)")
-        nextFlag = False
+        next_flag = False
         while True:
             if qFlag:
                 break
-            if nextFlag:
+            if next_flag:
                 break
             plt.pause(0.05)
 
