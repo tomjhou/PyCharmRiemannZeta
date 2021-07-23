@@ -29,7 +29,7 @@ def fmt(n: np.float64):
         return '{:1.2f}'.format(n/1000000) + 'M'
 
     if n >= 1000:
-        return '[{:+1.2f}]'.format(n/1000) + 'K'
+        return '{:1.2f}'.format(n/1000) + 'k'
 
     return str(n)
 
@@ -172,12 +172,12 @@ def make_plot(selection, screen_y):
         plot_domain2(lambda z: z, re=[-rsize, rsize], im=[-rsize, rsize], title='$z$', N=screen_y / 2 / rsize)
     elif selection == 1:
         # Standard version, critical strip centered at (0,0)
-        rsize = 20;
+        rsize = 30;
         plot_domain2(lambda z: rm.Riemann(z),
-                     re=[xCenter - rsize / 10, xCenter + rsize/10],
-                     im=[yCenter - rsize, yCenter + rsize],
+                     re=[xCenter, xCenter + 2],
+                     im=[yCenter, yCenter + 2*rsize],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     N=screen_y/rsize/5)
+                     N=screen_y/rsize)
     elif selection == 2:
         # Standard version, square
         rsize = 40;
@@ -289,14 +289,14 @@ def make_plot(selection, screen_y):
     elif selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
-        rsize = 20;
+        rsize = 30;
         global nextFlag, qFlag
 
         partialSum = 2
         for x in range(1, 100):
             plot_domain2(lambda z: RiemannPartial(z, partialSum),
                      re=[xCenter, xCenter + 2],
-                     im=[yCenter - rsize, yCenter + rsize],
+                     im=[yCenter, yCenter + 2*rsize],
                      title='Riemann partial sum ' + str(partialSum),
                      N=screen_y/rsize)
 
@@ -308,7 +308,7 @@ def make_plot(selection, screen_y):
     elif selection == 16:
         # This is the function that converts Riemann zeta to Dirichlet eta function
         # 1 - 2 ^ (1-s)
-        rsize = 20;
+        rsize = 30;
         plot_domain2(lambda z: 1 - np.power(2, 1 - z),
                      re=[xCenter - rsize, xCenter + rsize],
                      im=[yCenter - rsize, yCenter + rsize],
@@ -349,7 +349,8 @@ if not USE_BUTTON_PANEL:
 
 bmgr = None
 
-SCALE = 0.5
+SCALE = 0.8       # Adjust plot size
+resolution = 0.5  # Adjust mesh points
 
 def make_fig_plot(event, id):
     fig = bmgr.make_plot_fig(SCALE)
@@ -367,8 +368,6 @@ def do_quit(event):
 def submit(text):
     print("Text entry: " + text)
 
-
-resolution = 1.0
 
 def slider_update(val):
     global resolution
