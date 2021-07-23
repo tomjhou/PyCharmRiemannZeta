@@ -66,12 +66,12 @@ class ButtonManager:
         # Put button window at top left of screen
         self.move_window(self.canvas2, 25, 25)
 
-    def make_plot_fig(self, size = 1.0):
-
+    def make_plot_fig(self, xsize = 1.0, ysize = 1.0):
+        # size parameters are as fraction of screen HEIGHT
 #        mpl.rcParams['toolbar'] = 'toolbar2'
 
         self.fig1 = plt.figure()
-        self.set_fig1_size(self.fig1, size)
+        self.set_fig1_size(self.fig1, xsize, ysize)
         self.canvas1 = self.fig1.canvas
 
         # Make smaller margins
@@ -90,12 +90,12 @@ class ButtonManager:
 
         return self.fig1
 
-    def set_fig1_size(self, fig, size = 1.0):
-
-        screen_y_adj = int(self.screen_y * .95 * size)  # Reduce height about 5% so we don't overlap windows taskbar
+    def set_fig1_size(self, fig, xsize = 1.0, ysize = 1.0):
+        # size units are in fractions of screen HEIGHT.
+        screen_y_adj = int(self.screen_y * .95 * ysize)  # Reduce height about 5% so we don't overlap windows taskbar
 
         # Make large square window for main plots
-        fig.set_size_inches(screen_y_adj / self.dpi, screen_y_adj / self.dpi)
+        fig.set_size_inches(screen_y_adj * xsize / self.dpi, screen_y_adj * ysize / self.dpi)
 
     def add_id_button(self, text, id):
 

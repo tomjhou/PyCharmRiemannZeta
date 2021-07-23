@@ -107,6 +107,11 @@ def color_to_HSV(w, s):  # Classical domain coloring
     return RGB
 
 def plot_domain2(f, re=[-1, 1], im=[-1, 1], title='', N=200):  # Number of points per unit interval)
+    aspect = abs(re[1]-re[0])/(im[1]-im[0])
+
+    fig = bmgr.make_plot_fig(SCALE*aspect, SCALE)
+    fig.canvas.mpl_connect('key_press_event', on_keypress)
+    plt.pause(.001)
     plot_domain(color_to_HSV, f, re, im, title, 1, N, True)
 
 def plot_domain(color_func, f, re=[-1, 1], im=[-1, 1], title='',
@@ -353,9 +358,6 @@ SCALE = 0.8       # Adjust plot size
 resolution = 0.5  # Adjust mesh points
 
 def make_fig_plot(event, id):
-    fig = bmgr.make_plot_fig(SCALE)
-    fig.canvas.mpl_connect('key_press_event', on_keypress)
-    plt.pause(.001)
     make_plot(id, screen_y * SCALE * resolution)
     plt.pause(.001)
 
