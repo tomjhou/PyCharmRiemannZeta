@@ -49,9 +49,11 @@ class ButtonManager:
         # Buttons on plot window cause annoying flicker whenever mouse moves over button
         # (even if not clicked). Solve this by putting buttons on their own window
 
-        screen_y_adj = int(self.screen_y * .95)  # Reduce height about 5% so we don't overlap windows taskbar
+        # menu_height = self.screen_y / 2
+        menu_height_pixels = 700
+        self.menu_width_pixels = 700 * 0.67
 
-        self.fig2.set_size_inches(screen_y_adj / self.dpi / 3, screen_y_adj / self.dpi / 2)
+        self.fig2.set_size_inches(self.menu_width_pixels / self.dpi, menu_height_pixels / self.dpi)
 
         self.canvas2 = self.fig2.canvas
         # Put button window at top left of screen
@@ -73,7 +75,7 @@ class ButtonManager:
         screen_y_adj = int(self.screen_y * .95)  # Reduce height about 5% so we don't overlap windows taskbar
 
         # Move plot window to the right to avoid overlapping buttons
-        self.move_window(self.canvas1, screen_y_adj * .3, 0)
+        self.move_window(self.canvas1, self.menu_width_pixels + 25, 0)
 
         return self.fig1
 
@@ -104,7 +106,7 @@ class ButtonManager:
 
     def add_checkbox(self, text):
 
-        ax = widgets.CheckButtons(self.next_button_axis(), text)
+        ax = widgets.CheckButtons(self.next_button_axis(0.7,3), text)
         return ax
 
     def add_textbox(self, label, _id):
@@ -117,24 +119,24 @@ class ButtonManager:
         ax = Slider2(self.next_button_axis(), label, _id, _min, _max)
         return ax
 
-    def next_button_axis(self):
-        # Generate axes for the next button in series (either horizontal or vertical row)
-        ax = plt.axes([self.buttonX, self.buttonY, self.BUTTON_WIDTH, self.BUTTON_HEIGHT])
+    def next_button_axis(self, width=1, height=1):
+        self.increment_row(height-1)
+        ax = plt.axes([self.buttonX, self.buttonY, self.BUTTON_WIDTH*width, self.BUTTON_HEIGHT*height + self.BUTTON_GAP * (height-1)])
         self.increment_row()
         return ax
 
-    def increment_row(self):
-        # Increment coordinates in preparation for next call
-        self.buttonY = self.buttonY - self.BUTTON_HEIGHT - self.BUTTON_GAP
+    def increment_row(self, height=1):
+        # Increment coordinates to next button in vertical column
+        self.buttonY = self.buttonY - (self.BUTTON_HEIGHT + self.BUTTON_GAP)*height
 
-    def move_window(self, canvas, x, y): # x and y are in pixels
+    def move_window(self, canvas, x_pixels, y_pixels): # x and y are in pixels
 
         if self.backend == "Qt5Agg":
             geom = canvas.manager.window.geometry()
             x1,y1,dx,dy = geom.getRect()
-            canvas.manager.window.setGeometry(x , y + 50, dx, dy)
+            canvas.manager.window.setGeometry(x_pixels, y_pixels + 50, dx, dy)
         elif self.backend == "TkAgg":
-            canvas.manager.window.wm_geometry("+%d+%d" % (x, y))
+            canvas.manager.window.wm_geometry("+%d+%d" % (x_pixels, y_pixels))
         else:
             print("Unsupported backend " + self.backend)
 

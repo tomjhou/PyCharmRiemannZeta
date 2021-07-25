@@ -12,6 +12,8 @@ import ButtonManager as bm
 
 rm.RIEMANN_ITER_LIMIT = 80
 USE_BUTTON_PANEL = True
+SCALE = .98       # Plot size as a function of screen height
+MESH_DENSITY = 0.5  # Set # of mesh points as a function of "standard"
 
 print('Done importing libraries')
 
@@ -63,23 +65,29 @@ def color_to_HSV(w, s):  # Classical domain coloring
     # w is the  array of values f(z)
     # s is the constant saturation
 
+    global phase_only
+
     H = Hcomplex(w)  # Determine hue
     # S = s * np.ones(H.shape)  # Saturation = 1.0 always
 
     mag = np.absolute(w)  #
     mag = np.where(mag < 1e-323, 1e-323, mag)  # To avoid divide by zero errors, impose a min magnitude
-    elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
-    intensity_range = 0.97  # Diff between max, min intensity. Should be slightly <1.0, otherwise low values go black
 
-    # Create steps in V, so we will get magnitude contours representing factors of 10 change in magnitude
-    step_size = 10
-    mag = np.log(mag) / np.log(step_size)
-    mag = np.floor(mag)
-    mag = np.power(step_size, mag)
+    if phase_only:
+        v = 1
+    else:
+        elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
+        intensity_range = 0.97  # Diff between max, min intensity. Should be slightly <1.0, otherwise low values go black
 
-    # V = mag ^ 0.2 / (1 + mag ^ 0.2). This has the property that V(1/m) = 1 - V(m).
-    # Hence, V[f^-1(s)] = 1 - V[f(s)]
-    v = 1 - intensity_range / (1 + mag ** elas)
+        # Create steps in V, so we will get magnitude contours representing factors of 10 change in magnitude
+        step_size = 10
+        mag = np.log(mag) / np.log(step_size)
+        mag = np.floor(mag)
+        mag = np.power(step_size, mag)
+
+        # V = mag ^ 0.2 / (1 + mag ^ 0.2). This has the property that V(1/m) = 1 - V(m).
+        # Hence, V[f^-1(s)] = 1 - V[f(s)]
+        v = 1 - intensity_range / (1 + mag ** elas)
 
     # Generate white "spokes" to accentuate pinwheel effect
     num_spokes = 6
@@ -113,8 +121,8 @@ REUSE_FIGURE = False
 
 
 # Creates figure, then calls plot_domain with standard options
-def plot_domain2(f, re=(-1, 1), im=(-1, 1), title='', n=200):  # Number of points per unit interval)
-    global REUSE_FIGURE
+def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
+    global REUSE_FIGURE, screen_y
 
     if not REUSE_FIGURE:
         # Create new figure, and bind to keypress handler
@@ -128,7 +136,8 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title='', n=200):  # Number of point
 
     t1 = time.time()
 
-    mesh_size = plot_domain(color_to_HSV, f, re, im, title, 1, n, True)
+    density = bmgr.screen_y / abs(im[1] - im[0]) * MESH_DENSITY
+    mesh_size = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
 
     # Report time delay
     delay = time.time() - t1
@@ -139,11 +148,11 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title='', n=200):  # Number of point
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
                 s=0.9,  # Saturation
-                n=200,  # Number of points per unit interval
+                density=200,  # Number of points per unit interval
                 show_axis=None):  # Whether to show axis
 
     # Evaluate function f on a grid of points
-    w, mesh = eval_grid(f, re, im, n)
+    w, mesh = eval_grid(f, re, im, density)
     domc = color_func(w, s)
     plt.xlabel("$\Re(z)$")
     plt.ylabel("$\Im(z)$")
@@ -172,13 +181,13 @@ def on_keypress(event):
         next_flag = True
 
 
-def RiemannPartial(s, partialSum):
+def RiemannPartial(s, partial_sum):
     r_sum = 1
 
-    if partialSum <= 1:
+    if partial_sum <= 1:
         return 1
 
-    for x in range(1, partialSum):
+    for x in range(1, partial_sum):
         if np.mod(x, 2) == 0:
             # Note that even though index is EVEN, the denominator is ODD,
             # since it is 1/((x+1)^s)
@@ -190,6 +199,8 @@ def RiemannPartial(s, partialSum):
 
 
 def make_plot(_selection, screen_y):
+    global top_only
+
     x_center = 0
     y_center = 0
 
@@ -198,78 +209,78 @@ def make_plot(_selection, screen_y):
 
     print('Please wait while computing heatmap... (this may take a minute or two)')
 
+    y_max = 30
+    if top_only:
+        y_min = 0
+    else:
+        y_min = -30
+
+    # Number of mesh dots per unit interval ... roughly one per pixel
+    density = screen_y / (y_max-y_min)
+
     if _selection == 0:
         mesh_size = 10
-        plot_domain2(lambda z: z, re=[-mesh_size, mesh_size], im=[-mesh_size, mesh_size], title='$z$',
-                     n=screen_y / 2 / mesh_size)
+        plot_domain2(lambda z: z, re=[-mesh_size, mesh_size], im=[-mesh_size, mesh_size], title='$z$')
     elif _selection == 1:
         # Standard version, critical strip centered at (0,0)
         mesh_size = 30
         plot_domain2(lambda z: rm.Riemann(z),
                      re=[x_center, x_center + 2],
-                     im=[y_center, y_center + 2 * mesh_size],
-                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     n=screen_y / mesh_size)
+                     im=[y_min, y_max],
+                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 2:
         # Standard version, square
         mesh_size = 40
         plot_domain2(lambda z: rm.Riemann(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     n=screen_y / mesh_size)
+                     im=[y_min, y_max],
+                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 3:
         # Standard, zoomed into 0.5 + 50j
-        mesh_size = 2
+        mesh_size = 10
         x_center = 0.5
         y_center = 50
         plot_domain2(lambda z: rm.Riemann(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size * 5, y_center + mesh_size * 5],
-                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     n=screen_y / mesh_size / 5)
+                     re=[x_center - mesh_size/5, x_center + mesh_size/5],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 4:
         # Symmetric version, critical strip
         mesh_size = 30
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
                      re=[x_center - 1, x_center + 2],
-                     im=[y_center, y_center + mesh_size * 2],
-                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     n=screen_y / mesh_size / 2)
+                     im=[y_min, y_max],
+                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
         # Symmetric version, square
         mesh_size = 2
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     n=screen_y / mesh_size)
+                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 6:
         # Symmetric version, zoomed into 0.5 + 50j
-        mesh_size = 2
+        mesh_size = 10
         x_center = 0.5
         y_center = 50
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size * 5, y_center + mesh_size * 5],
-                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT),
-                     n=screen_y / mesh_size / 5)
+                     re=[x_center - mesh_size/5, x_center + mesh_size/5],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 7:
         # Gamma(s/2) function, vertical strip centered at (0,0)
         mesh_size = 30
         plot_domain2(lambda z: gamma(z / 2),
                      re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size * 5, y_center + mesh_size * 5],
-                     title='gamma($z/2$)',
-                     n=screen_y / mesh_size / 5)
+                     im=[y_min, y_max],
+                     title='gamma($z/2$)')
     elif _selection == 8:
         # Gamma(s/2) function, square
         mesh_size = 4
         plot_domain2(lambda z: gamma(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='gamma($z$)',
-                     n=screen_y * 1.5 / mesh_size)
+                     title='gamma($z$)')
     elif _selection == 9:
         # Gamma(s/2) function, zoomed in, centered at 0.5 + 50j
         mesh_size = 2
@@ -278,48 +289,42 @@ def make_plot(_selection, screen_y):
         plot_domain2(lambda z: gamma(z / 2),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size * 5, y_center + mesh_size * 5],
-                     title='gamma($z/2$)',
-                     n=screen_y / mesh_size / 5)
+                     title='gamma($z/2$)')
     elif _selection == 10:
         # sine function, square
         mesh_size = 10
         plot_domain2(lambda z: np.sin(z / 2),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='sin($z$)',
-                     n=screen_y / mesh_size)
+                     title='sin($z$)')
     elif _selection == 11:
         # cosine function, square
         mesh_size = 20
         plot_domain2(lambda z: np.cos(z / 2),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='cos($z$)',
-                     n=screen_y / mesh_size)
+                     title='cos($z$)')
     elif _selection == 12:
         # complex exponential function, square
         mesh_size = 40
         plot_domain2(lambda z: np.power(3, z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='3^$z$',
-                     n=screen_y / mesh_size)
+                     title='3^$z$')
     elif _selection == 13:
         # complex power function, square
         mesh_size = 40
         plot_domain2(lambda z: np.power(z, 3 - 8j),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='$z$^(3-8j)',
-                     n=screen_y / mesh_size)
+                     title='$z$^(3-8j)')
     elif _selection == 14:
         # pi ^ s/2
         mesh_size = 40
         plot_domain2(lambda z: np.power(np.pi, z / 2),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='$pi$^(z/2)',
-                     n=screen_y / mesh_size)
+                     title='$pi$^(z/2)')
     elif _selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
@@ -330,9 +335,8 @@ def make_plot(_selection, screen_y):
         for x in range(1, 100):
             plot_domain2(lambda z: RiemannPartial(z, partial_sum),
                          re=[x_center, x_center + 2],
-                         im=[y_center, y_center + 2 * mesh_size],
-                         title='Riemann partial sum ' + str(partial_sum),
-                         n=screen_y / mesh_size)
+                         im=[y_min, y_max],
+                         title='Riemann partial sum ' + str(partial_sum))
 
             REUSE_FIGURE = True
 
@@ -351,22 +355,19 @@ def make_plot(_selection, screen_y):
         plot_domain2(lambda z: 1 - np.power(2, 1 - z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='1-2^(1-$z$)',
-                     n=screen_y * 1.5 / mesh_size)
+                     title='1-2^(1-$z$)')
     elif _selection == 17:
         #  Dirichlet Eta instead of Riemann zeta
-        mesh_size = 30
         plot_domain2(lambda z: rm.Riemann(z, do_eta=True),
                      re=[x_center - 1, x_center + 2],
-                     im=[y_center, y_center + 2 * mesh_size],
-                     title='Eta($s$)',
-                     n=screen_y / mesh_size)
+                     im=[y_min, y_max],
+                     title='Eta($s$)')
 
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
 
 
 def make_fig_plot(event, id):
-    make_plot(id, screen_y * SCALE * resolution)
+    make_plot(id, bmgr.screen_y * SCALE * MESH_DENSITY)
     plt.pause(.001)
 
 
@@ -380,9 +381,22 @@ def do_submit(text, _id):
 
 
 def slider_update(val):
-    global resolution
+    global MESH_DENSITY
     #    print("slider: " + str(val))
-    resolution = val
+    MESH_DENSITY = val
+
+
+phase_only = False
+top_only = False
+
+def do_checkbox(label):
+    global phase_only, top_only, checkbox_list
+
+    index = checkbox_list.index(label)
+    if index == 0:
+        top_only = not top_only
+    elif index == 1:
+        phase_only = not phase_only
 
 
 def do_slider(val, id):
@@ -410,16 +424,11 @@ def AddIdTextBox(text, _id):
     text_box_list[_id].on_submit(lambda x: do_submit(x, text_box_list[_id].id))
 
 
-screen_y = None
-
 mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
 #mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
 
 
 bmgr = None
-
-SCALE = 0.8  # Adjust plot size
-resolution = 0.5  # Adjust mesh points
 
 # New button-based GUI selection method
 plot_list = {
@@ -430,18 +439,20 @@ plot_list = {
     10: "Sine",
     11: "Cosine",
     12: "Exponential",
-    13: "Spiral",
+    13: "Power (spiral)",
     15: "Riemann partial sum",
     16: "1 - 2 ^ (1-s)",
     17: "Dirichlet eta"
 }
 
-bmgr = bm.ButtonManager(16,2)
-screen_y = bmgr.screen_y
+checkbox_list = ["Im>0 only", "Phase only"]
 
-bmgr.increment_row()
-bmgr.increment_row()
-bmgr.increment_row()
+bmgr = bm.ButtonManager(16,2)
+
+#bmgr.increment_row()
+#bmgr.increment_row()
+cb1 = bmgr.add_checkbox(checkbox_list)
+cb1.on_clicked(do_checkbox)
 
 for k in plot_list:
     AddGraphingButton(plot_list[k], k)
