@@ -12,8 +12,17 @@ import ButtonManager as bm
 
 rm.RIEMANN_ITER_LIMIT = 80
 USE_BUTTON_PANEL = True
-SCALE = .98       # Plot size as a function of screen height
-MESH_DENSITY = 0.5  # Set # of mesh points as a function of "standard"
+
+class settings:
+    pass
+
+settings.SCALE = .98       # Plot size as a function of screen height
+settings.MESH_DENSITY = 0.5  # Set # of mesh points as a function of "standard"
+settings.oversample = False
+settings.REUSE_FIGURE = False
+settings.phase_only = False
+settings.top_only = False
+
 
 print('Done importing libraries')
 
@@ -65,7 +74,7 @@ def color_to_HSV(w, s):  # Classical domain coloring
     # w is the  array of values f(z)
     # s is the constant saturation
 
-    global phase_only
+    global settings
 
     H = Hcomplex(w)  # Determine hue
     # S = s * np.ones(H.shape)  # Saturation = 1.0 always
@@ -73,7 +82,7 @@ def color_to_HSV(w, s):  # Classical domain coloring
     mag = np.absolute(w)  #
     mag = np.where(mag < 1e-323, 1e-323, mag)  # To avoid divide by zero errors, impose a min magnitude
 
-    if phase_only:
+    if settings.phase_only:
         v = 1
     else:
         elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
@@ -117,26 +126,24 @@ def color_to_HSV(w, s):  # Classical domain coloring
     return RGB
 
 
-REUSE_FIGURE = False
-
 
 # Creates figure, then calls plot_domain with standard options
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
-    global REUSE_FIGURE, screen_y
+    global settings
 
-    if not REUSE_FIGURE:
+    if not settings.REUSE_FIGURE:
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
-        fig = bmgr.make_plot_fig(SCALE * aspect, SCALE)
+        fig = bmgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
         plt.pause(.001)
         # Clear flag so that we only reuse once. If we want to
         # reuse again, caller must set flag again
-        REUSE_FIGURE = False
+        settings.REUSE_FIGURE = False
 
     t1 = time.time()
 
-    density = bmgr.screen_y / abs(im[1] - im[0]) * MESH_DENSITY
+    density = bmgr.screen_y_pixels / abs(im[1] - im[0]) * settings.MESH_DENSITY
     mesh_size = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
 
     # Report time delay
@@ -199,7 +206,7 @@ def RiemannPartial(s, partial_sum):
 
 
 def make_plot(_selection, screen_y):
-    global top_only
+    global settings
 
     x_center = 0
     y_center = 0
@@ -210,7 +217,7 @@ def make_plot(_selection, screen_y):
     print('Please wait while computing heatmap... (this may take a minute or two)')
 
     y_max = 30
-    if top_only:
+    if settings.top_only:
         y_min = 0
     else:
         y_min = -30
@@ -338,7 +345,7 @@ def make_plot(_selection, screen_y):
                          im=[y_min, y_max],
                          title='Riemann partial sum ' + str(partial_sum))
 
-            REUSE_FIGURE = True
+            settings.REUSE_FIGURE = True
 
             partial_sum = partial_sum * 2
             plt.pause(0.2)
@@ -346,7 +353,7 @@ def make_plot(_selection, screen_y):
             if next_flag:
                 break
 
-        REUSE_FIGURE = False
+        settings.REUSE_FIGURE = False
 
     elif _selection == 16:
         # This is the function that converts Riemann zeta to Dirichlet eta function
@@ -367,7 +374,7 @@ def make_plot(_selection, screen_y):
 
 
 def make_fig_plot(event, id):
-    make_plot(id, bmgr.screen_y * SCALE * MESH_DENSITY)
+    make_plot(id, bmgr.screen_y_pixels * settings.SCALE * settings.MESH_DENSITY)
     plt.pause(.001)
 
 
@@ -381,22 +388,19 @@ def do_submit(text, _id):
 
 
 def slider_update(val):
-    global MESH_DENSITY
+    global settings
     #    print("slider: " + str(val))
-    MESH_DENSITY = val
+    settings.MESH_DENSITY = val
 
-
-phase_only = False
-top_only = False
 
 def do_checkbox(label):
-    global phase_only, top_only, checkbox_list
+    checkbox_list
 
     index = checkbox_list.index(label)
     if index == 0:
-        top_only = not top_only
+        settings.top_only = not settings.top_only
     elif index == 1:
-        phase_only = not phase_only
+        settings.phase_only = not settings.phase_only
 
 
 def do_slider(val, id):
@@ -465,7 +469,9 @@ b2.on_clicked(do_quit)
 #
 bmgr.reset_button_coord(1)
 
-b3 = bmgr.add_id_slider("Resolution", 0)
+b3 = bmgr.add_id_slider("mesh density",
+                        _id=0, valmin=0, valmax=1,
+                        valinit = settings.MESH_DENSITY)
 b3.on_changed(slider_update)
 
 AddIdTextBox("X-size", 0)
