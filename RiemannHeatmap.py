@@ -17,11 +17,12 @@ class settings:
     pass
 
 settings.SCALE = .98       # Plot size as a function of screen height
-settings.MESH_DENSITY = 0.5  # Set # of mesh points as a function of "standard"
+settings.MESH_DENSITY = 0.25  # Set # of mesh points as a function of "standard"
 settings.oversample = False
 settings.REUSE_FIGURE = False
 settings.phase_only = False
 settings.top_only = False
+settings.last_selection = 0  # Save last graph selection so we can recalculate
 
 
 print('Done importing libraries')
@@ -131,15 +132,19 @@ def color_to_HSV(w, s):  # Classical domain coloring
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
     global settings
 
-    if not settings.REUSE_FIGURE:
+    if settings.REUSE_FIGURE:
+        plt.figure(settings.last_figure.number)
+        # Clear flag so that we only reuse once. If we want to
+        # reuse again, caller must set flag again
+        settings.REUSE_FIGURE = False
+    else:
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
         fig = bmgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
+        settings.last_figure = fig
         plt.pause(.001)
-        # Clear flag so that we only reuse once. If we want to
-        # reuse again, caller must set flag again
-        settings.REUSE_FIGURE = False
+
 
     t1 = time.time()
 
@@ -206,7 +211,6 @@ def RiemannPartial(s, partial_sum):
 
 
 def make_plot(_selection, screen_y):
-    global settings
 
     x_center = 0
     y_center = 0
@@ -374,6 +378,11 @@ def make_plot(_selection, screen_y):
 
 
 def make_fig_plot(event, id):
+    if id < 0:
+        id = settings.last_selection
+        settings.REUSE_FIGURE = True
+    else:
+        settings.last_selection = id
     make_plot(id, bmgr.screen_y_pixels * settings.SCALE * settings.MESH_DENSITY)
     plt.pause(.001)
 
@@ -388,7 +397,6 @@ def do_submit(text, _id):
 
 
 def slider_update(val):
-    global settings
     #    print("slider: " + str(val))
     settings.MESH_DENSITY = val
 
@@ -413,7 +421,7 @@ text_box_list = [None] * 20
 slider_val = [0] * 20
 
 
-def AddGraphingButton(text, _id):
+def AddIdButton(text, _id):
     button_list[_id] = bmgr.add_id_button(text, _id)
     button_list[_id].on_clicked(lambda x: make_fig_plot(x, button_list[_id].id))
 
@@ -459,7 +467,7 @@ cb1 = bmgr.add_checkbox(checkbox_list)
 cb1.on_clicked(do_checkbox)
 
 for k in plot_list:
-    AddGraphingButton(plot_list[k], k)
+    AddIdButton(plot_list[k], k)
 
 b2 = bmgr.add_standard_button("Quit")
 b2.on_clicked(do_quit)
@@ -474,8 +482,8 @@ b3 = bmgr.add_id_slider("mesh density",
                         valinit = settings.MESH_DENSITY)
 b3.on_changed(slider_update)
 
-AddIdTextBox("X-size", 0)
-AddIdTextBox("Y-size", 0)
+b4 = AddIdButton("Recalculate", -1)
+bmgr.increment_row()
 
 for k in plot_list:
     AddIdSlider2("", k)
