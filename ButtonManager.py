@@ -7,27 +7,7 @@ from matplotlib.widgets import Button
 
 class ButtonManager:
 
-    def __init__(self, num_rows=5, num_cols=2):
-
-        self.BUTTON_Y_GAP = 0.01                  # Space (as fraction of screen) between buttons
-
-        # Button dimensions are all expressed as fraction of window size
-        self.BUTTON_Y_START = 0.9
-        self.BUTTON_HEIGHT = 0.8 / num_rows
-        self.BUTTON_WIDTH = 0.4
-        self.BUTTON_X_GAP = 0.05
-        self.BUTTON_X_START = (1 - self.BUTTON_WIDTH * num_cols - self.BUTTON_X_GAP * (num_cols-1)) / 2
-
-        self.buttonX = self.BUTTON_X_START
-        self.buttonY = self.BUTTON_Y_START
-
-        # Create figure 1 for main plots
-        self.fig1 = None
-        self.canvas1 = None
-
-        # Create figure 2 with buttons
-        self.fig2 = plt.figure(2)
-        self.dpi = self.fig2.dpi
+    def __init__(self, use_matplotlib_widgets = True, num_rows=5, num_cols=2):
 
         self.backend = mpl.get_backend()
 
@@ -37,49 +17,68 @@ class ButtonManager:
             # Hack to get screen size. Temporarily make a full-screen window, get size, then later set "real" size
             window.showMaximized()  # Make fullscreen
             plt.pause(.001)  # Draw items to screen so we can get size
-            screen_x, screen_y = self.fig2.get_size_inches() * self.fig2.dpi  # size in pixels
+            screen_x, screen_y = self.fig_buttons.get_size_inches() * self.fig_buttons.dpi  # size in pixels
         elif self.backend == "TkAgg":
             screen_x, screen_y = window.wm_maxsize()  # This works for TkAgg, but not Qt5Agg
         else:
             print("Unsupported backend " + self.backend)
             screen_y = 1024
 
+        plt.close()
+
         self.screen_y_pixels = screen_y
 
-        # Buttons on plot window cause annoying flicker whenever mouse moves over button
-        # (even if not clicked). Solve this by putting buttons on their own window
+        if use_matplotlib_widgets:
+            self.BUTTON_Y_GAP = 0.01                  # Space (as fraction of screen) between buttons
 
-        # menu_height = self.screen_y / 2
-        self.menu_height_pixels = 700
-        self.menu_width_pixels = 700 * 0.67
+            # Button dimensions are all expressed as fraction of window size
+            self.BUTTON_Y_START = 0.9
+            self.BUTTON_HEIGHT = 0.8 / num_rows
+            self.BUTTON_WIDTH = 0.4
+            self.BUTTON_X_GAP = 0.05
+            self.BUTTON_X_START = (1 - self.BUTTON_WIDTH * num_cols - self.BUTTON_X_GAP * (num_cols-1)) / 2
 
-        self.fig2.set_size_inches(self.menu_width_pixels / self.dpi, self.menu_height_pixels / self.dpi)
+            self.buttonX = self.BUTTON_X_START
+            self.buttonY = self.BUTTON_Y_START
 
-        self.canvas2 = self.fig2.canvas
-        # Put button window at top left of screen
-        self.move_window(self.canvas2, 25, 25)
+            # Create figure 2 with buttons
+            self.fig_buttons = plt.figure(2)
+            self.dpi = self.fig_buttons.dpi
+
+            # Buttons on plot window cause annoying flicker whenever mouse moves over button
+            # (even if not clicked). Solve this by putting menu buttons on their own window
+            self.menu_height_pixels = 700
+            self.menu_width_pixels = 700 * 0.8
+
+            self.fig_buttons.set_size_inches(self.menu_width_pixels / self.dpi, self.menu_height_pixels / self.dpi)
+
+            self.canvas_buttons = self.fig_buttons.canvas
+            # Put button window at top left of screen
+            self.move_window(self.canvas_buttons, 25, 25)
+
+        # Create figure 1 for main plots
+        self.fig_plot = None
+        self.canvas_plot = None
+
 
     def make_plot_fig(self, x_size = 1.0, y_size = 1.0):
         # size parameters are as fraction of screen HEIGHT
-#        mpl.rcParams['toolbar'] = 'toolbar2'
 
-        self.fig1 = plt.figure()
-        self.set_fig1_size(self.fig1, x_size, y_size)
-        self.canvas1 = self.fig1.canvas
+        self.fig_plot = plt.figure()
+        self.set_figure_size(self.fig_plot, x_size, y_size)
+        self.canvas_plot = self.fig_plot.canvas
 
         # Make smaller margins
         plt.tight_layout()
         # Make even smaller margins
         plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
 
-        screen_y_adj = int(self.screen_y_pixels * .95)  # Reduce height about 5% so we don't overlap windows taskbar
-
         # Move plot window to the right to avoid overlapping buttons
-        self.move_window(self.canvas1, self.menu_width_pixels + 25, 0)
+        self.move_window(self.canvas_plot, self.menu_width_pixels + 25, 0)
 
-        return self.fig1
+        return self.fig_plot
 
-    def set_fig1_size(self, fig, xsize = 1.0, ysize = 1.0):
+    def set_figure_size(self, fig, xsize = 1.0, ysize = 1.0):
         # size units are in fractions of screen HEIGHT.
         screen_y_adj = int(self.screen_y_pixels * .95 * ysize)  # Reduce height about 5% so we don't overlap windows taskbar
 
@@ -107,7 +106,7 @@ class ButtonManager:
     def add_checkbox(self, text):
 
         # Checkbox is 3 rows high, and width is same as height
-        button_height_pixels = self.BUTTON_HEIGHT * 3 * self.menu_height_pixels
+        button_height_pixels = (3 * self.BUTTON_HEIGHT + 2 * self.BUTTON_Y_GAP) * self.menu_height_pixels
         button_width_fraction =button_height_pixels / self.menu_width_pixels
         ax = widgets.CheckButtons(self.next_button_axis(num_rows=3, button_width=button_width_fraction), text)
         return ax
@@ -119,7 +118,8 @@ class ButtonManager:
 
     def add_id_slider(self, label, _id, valmin=0, valmax=1, **kwargs):
 
-        ax = Slider2(self.next_button_axis(), label, _id, valmin, valmax, **kwargs)
+        # Slider is slightly narrower than button, to give room for position text at right
+        ax = Slider2(self.next_button_axis(button_width=self.BUTTON_WIDTH*.8), label, _id, valmin, valmax, **kwargs)
         return ax
 
     def next_button_axis(self, num_rows=1, button_width=0):

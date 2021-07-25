@@ -12,18 +12,25 @@ import ButtonManager as bm
 
 rm.RIEMANN_ITER_LIMIT = 80
 USE_BUTTON_PANEL = True
+SHOW_PROGRESS_UPDATE = True
+slider_progress = None
+mesh_points = 0
+qFlag = False
+next_flag = False
+
 
 class settings:
     pass
+
 
 settings.SCALE = .98       # Plot size as a function of screen height
 settings.MESH_DENSITY = 0.25  # Set # of mesh points as a function of "standard"
 settings.oversample = False
 settings.REUSE_FIGURE = False
 settings.phase_only = False
-settings.top_only = False
+settings.top_only = True
 settings.last_selection = 0  # Save last graph selection so we can recalculate
-
+settings.autorecalculate = False
 
 print('Done importing libraries')
 
@@ -38,7 +45,7 @@ def g(x):
     return (1 - 1 / (1 + x ** 2)) ** 0.2
 
 
-def fmt(n: np.float64):
+def fmt(n: np.float):
     if n >= 500000:
         return '{:1.2f}'.format(n / 1000000) + 'M'
 
@@ -52,17 +59,24 @@ def fmt(n: np.float64):
 #   re=(a, b) and im=(c, d), are pairs of real numbers that define limits of rectangular region.
 #   N is a real number specifying grid points per unit interval.
 def eval_grid(f, re, im, n):
-    l = re[1] - re[0]
+    global mesh_points
+
+    w = re[1] - re[0]
     h = im[1] - im[0]
-    res_l = n * l  # horizontal resolution
+    res_w = n * w  # horizontal resolution
     res_h = n * h  # vertical resolution
-    x = np.linspace(re[0], re[1], int(res_l))
+    x = np.linspace(re[0], re[1], int(res_w))
     y = np.linspace(im[0], im[1], int(res_h))
     x, y = np.meshgrid(x, y)
     z = x + 1j * y
 
     rm.callCount = 0
-    print('Mesh has ' + str(int(res_l)) + " x " + str(int(res_h)) + " = " + fmt(np.size(z)) + ' points')
+    print('Mesh has ' + str(int(res_w)) + " x " + str(int(res_h)) + " = " + fmt(np.size(z)) + ' points')
+
+    mesh_points = np.size(z)
+    slider_progress.set_val(0)
+    plt.pause(0.001)
+
     return f(z), z
 
 
@@ -71,7 +85,7 @@ def eval_grid(f, re, im, n):
 # Hue is based on phase angle,
 # Saturation is constant,
 # Intensity is based on magnitude, 0 = black, 1 = 0.5, infinity is white.
-def color_to_HSV(w, s):  # Classical domain coloring
+def color_to_HSV(w, max_saturation):  # Classical domain coloring
     # w is the  array of values f(z)
     # s is the constant saturation
 
@@ -87,7 +101,7 @@ def color_to_HSV(w, s):  # Classical domain coloring
         v = 1
     else:
         elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
-        intensity_range = 0.97  # Diff between max, min intensity. Should be slightly <1.0, otherwise low values go black
+        intensity_range = 0.97  # Diff between max, min intensity. Should be <1.0, otherwise low values go black
 
         # Create steps in V, so we will get magnitude contours representing factors of 10 change in magnitude
         step_size = 10
@@ -115,22 +129,21 @@ def color_to_HSV(w, s):  # Classical domain coloring
     spokes = spokes * spokes
 
     # Saturation becomes zero when spokes == 1
-    S = 1 - spokes
+    sat = (1 - spokes) * max_saturation
     # Intensity becomes 1 when spokes == 1
     v = np.where(spokes <= 1, v + (1 - v) * spokes, v)
 
     # V = np.ones(H.shape)
     # the points mapped to infinity are colored with white; hsv_to_rgb(0, 0, 1)=(1, 1, 1)=white
 
-    HSV = np.dstack((H, S, v))
+    HSV = np.dstack((H, sat, v))
     RGB = hsv_to_rgb(HSV)
     return RGB
 
 
-
 # Creates figure, then calls plot_domain with standard options
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
-    global settings
+    global settings, mesh_points
 
     if settings.REUSE_FIGURE:
         plt.figure(settings.last_figure.number)
@@ -143,19 +156,23 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         fig = bmgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
         settings.last_figure = fig
-        plt.pause(.001)
-
+        fig.canvas.draw()
 
     t1 = time.time()
 
     density = bmgr.screen_y_pixels / abs(im[1] - im[0]) * settings.MESH_DENSITY
-    mesh_size = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
+    # We already calculated mesh_points earlier, but this time we get it from the
+    # real mesh. The value should be exactly the same, so this is redundant.
+    mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
 
     # Report time delay
     delay = time.time() - t1
     print('Completed domain coloring plot in ' + str(delay) + ' seconds')
-    rate = mesh_size / delay
+    rate = mesh_points / delay
     print('Rate: ' + fmt(rate) + ' points per second')
+
+    slider_progress.set_val(100)
+    bmgr.canvas_buttons.draw()
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -178,10 +195,6 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
         plt.axis('off')
 
     return np.size(mesh)
-
-
-qFlag = False
-next_flag = False
 
 
 def on_keypress(event):
@@ -210,7 +223,7 @@ def RiemannPartial(s, partial_sum):
     return r_sum
 
 
-def make_plot(_selection, screen_y):
+def make_plot(_selection):
 
     x_center = 0
     y_center = 0
@@ -226,25 +239,23 @@ def make_plot(_selection, screen_y):
     else:
         y_min = -30
 
-    # Number of mesh dots per unit interval ... roughly one per pixel
-    density = screen_y / (y_max-y_min)
+    y_range = abs(y_max - y_min)
 
     if _selection == 0:
         mesh_size = 10
         plot_domain2(lambda z: z, re=[-mesh_size, mesh_size], im=[-mesh_size, mesh_size], title='$z$')
     elif _selection == 1:
         # Standard version, critical strip centered at (0,0)
-        mesh_size = 30
         plot_domain2(lambda z: rm.Riemann(z),
                      re=[x_center, x_center + 2],
                      im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 2:
         # Standard version, square
-        mesh_size = 40
+        mesh_size = 20
         plot_domain2(lambda z: rm.Riemann(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_min, y_max],
+                     im=[y_center - mesh_size, y_center + mesh_size],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 3:
         # Standard, zoomed into 0.5 + 50j
@@ -257,7 +268,6 @@ def make_plot(_selection, screen_y):
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 4:
         # Symmetric version, critical strip
-        mesh_size = 30
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
                      re=[x_center - 1, x_center + 2],
                      im=[y_min, y_max],
@@ -280,9 +290,8 @@ def make_plot(_selection, screen_y):
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 7:
         # Gamma(s/2) function, vertical strip centered at (0,0)
-        mesh_size = 30
         plot_domain2(lambda z: gamma(z / 2),
-                     re=[x_center - mesh_size, x_center + mesh_size],
+                     re=[x_center - 1, x_center + 2],
                      im=[y_min, y_max],
                      title='gamma($z/2$)')
     elif _selection == 8:
@@ -329,18 +338,10 @@ def make_plot(_selection, screen_y):
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='$z$^(3-8j)')
-    elif _selection == 14:
-        # pi ^ s/2
-        mesh_size = 40
-        plot_domain2(lambda z: np.power(np.pi, z / 2),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='$pi$^(z/2)')
     elif _selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
-        mesh_size = 30
-        global next_flag, qFlag, REUSE_FIGURE
+        global next_flag
 
         partial_sum = 2
         for x in range(1, 100):
@@ -377,18 +378,20 @@ def make_plot(_selection, screen_y):
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
 
 
-def make_fig_plot(event, id):
-    if id < 0:
-        id = settings.last_selection
+def make_fig_plot(event, _id):
+    if _id < 0:
+        _id = settings.last_selection
         settings.REUSE_FIGURE = True
     else:
-        settings.last_selection = id
-    make_plot(id, bmgr.screen_y_pixels * settings.SCALE * settings.MESH_DENSITY)
+        settings.last_selection = _id
+    make_plot(_id)
     plt.pause(.001)
 
 
 def do_quit(event):
     global qFlag
+
+    rm.quit_computation_flag = True
     qFlag = True
 
 
@@ -396,48 +399,71 @@ def do_submit(text, _id):
     print("Object id: " + str(_id) + ", entered: " + text)
 
 
-def slider_update(val):
+def do_slider_density_update(val):
     #    print("slider: " + str(val))
     settings.MESH_DENSITY = val
 
 
-def do_checkbox(label):
-    checkbox_list
+# This is NOT the usual widget callback in response to user input.
+# Rather it is called from rm.Riemann, in response to computational progress
+def do_slider_progress_update(val):
+    if not SHOW_PROGRESS_UPDATE:
+        return
 
+    print("  \r" + '{:1.2f}'.format(val * 100 / mesh_points) + "%", end="")
+
+#    slider_progress.set_val(100 * val / mesh_points)
+#    bmgr.canvas_buttons.draw()  # Redraw menu
+    bmgr.canvas_buttons.flush_events()
+
+
+def do_checkbox(label):
     index = checkbox_list.index(label)
     if index == 0:
-        settings.top_only = not settings.top_only
+        settings.autorecalculate = not settings.autorecalculate
     elif index == 1:
+        settings.top_only = not settings.top_only
+    elif index == 2:
         settings.phase_only = not settings.phase_only
 
 
-def do_slider(val, id):
-    slider_val[id] = val
+def do_slider(val, _id):
+    # negative id is the progress bar, which should not respond to user input
+    if _id >= 0:
+        slider_val[id] = val
 
 
-button_list = [None] * 20
-slider_list = [None] * 20
-text_box_list = [None] * 20
-slider_val = [0] * 20
+# Dictionaries to store widget axes.
+# Each widget needs a unique axis object used to assign callback.
+# Even though we don't use these objects after initial definition,
+# it seems we can't recycle the variable name, as the callbacks will then
+# only work for the last item assigned.
+button_ax_list = {}
+slider_ax_list = {}
+text_box_ax_list = {}
+
+# Dictionary to store user input from each slider
+slider_val = {}
 
 
 def AddIdButton(text, _id):
-    button_list[_id] = bmgr.add_id_button(text, _id)
-    button_list[_id].on_clicked(lambda x: make_fig_plot(x, button_list[_id].id))
+    button_ax_list[_id] = bmgr.add_id_button(text, _id)
+    button_ax_list[_id].on_clicked(lambda x: make_fig_plot(x, button_ax_list[_id].id))
 
 
-def AddIdSlider2(text, _id):
-    slider_list[_id] = bmgr.add_id_slider(text, _id)
-    slider_list[_id].on_changed(lambda x: do_slider(x, slider_list[_id].id))
+def AddIdSlider2(text, _id, **kwargs):
+    slider_ax_list[_id] = bmgr.add_id_slider(text, _id, **kwargs)
+    slider_ax_list[_id].on_changed(lambda x: do_slider(x, slider_ax_list[_id].id))
+    return slider_ax_list[_id]
 
 
 def AddIdTextBox(text, _id):
-    text_box_list[_id] = bmgr.add_textbox(text, _id)
-    text_box_list[_id].on_submit(lambda x: do_submit(x, text_box_list[_id].id))
+    text_box_ax_list[_id] = bmgr.add_textbox(text, _id)
+    text_box_ax_list[_id].on_submit(lambda x: do_submit(x, text_box_ax_list[_id].id))
 
 
 mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
-#mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
+# mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
 
 
 bmgr = None
@@ -446,8 +472,11 @@ bmgr = None
 plot_list = {
     0: "Pinwheel",
     1: "Riemann, strip",
+    2: "Riemann, square",
     4: "Symmetric Riemann, strip",
-    8: "Gamma",
+    5: "Symmetric Riemann, square",
+    7: "Gamma, strip",
+    8: "Gamma, square",
     10: "Sine",
     11: "Cosine",
     12: "Exponential",
@@ -457,100 +486,19 @@ plot_list = {
     17: "Dirichlet eta"
 }
 
-checkbox_list = ["Im>0 only", "Phase only"]
-
-bmgr = bm.ButtonManager(16,2)
-
-#bmgr.increment_row()
-#bmgr.increment_row()
-cb1 = bmgr.add_checkbox(checkbox_list)
-cb1.on_clicked(do_checkbox)
-
-for k in plot_list:
-    AddIdButton(plot_list[k], k)
-
-b2 = bmgr.add_standard_button("Quit")
-b2.on_clicked(do_quit)
-
-#
-# Start second column of widgets
-#
-bmgr.reset_button_coord(1)
-
-b3 = bmgr.add_id_slider("mesh density",
-                        _id=0, valmin=0, valmax=1,
-                        valinit = settings.MESH_DENSITY)
-b3.on_changed(slider_update)
-
-b4 = AddIdButton("Recalculate", -1)
-bmgr.increment_row()
-
-for k in plot_list:
-    AddIdSlider2("", k)
-
-# Button figure also responds to key press - "x" to exit
-bmgr.canvas2.mpl_connect('key_press_event', on_keypress)
-
-plt.pause(0.01)
-
-while not qFlag:
-    bmgr.canvas2.flush_events()
-    #        plt.pause(0.001) # This causes new plots to permanently overlay older ones
-    time.sleep(0.025)  # This allows plots to be moved around more freely
-
+checkbox_list = ["Autorecalculate",
+                 "Im>0 only",
+                 "Phase only"]
 
 if False:
 
     # Old text-based selection method
     while True:
         print('Select plot type:\n'
-              '0. Pinwheel\n'
-              '1. Standard Riemann, critical strip (30 sec)\n'
-              '2. Standard Riemann, large square (31 sec)\n'
               '3. Standard Riemann, zoomed critical strip\n'
-              '4. Symmetric Riemann, critical strip (47 sec)\n'
-              '5. Symmetric Riemann, large square (31 sec)\n'
               '6. Symmetric Riemann, zoomed critical strip\n'
-              '7. Gamma, critical strip\n'
-              '8. Gamma, large square\n'
               '9. Gamma, zoomed critical strip\n'
-              '10. sin function, large square\n'
-              '11. cos function, large square\n'
-              '12. Complex exponential\n'
-              '13. Complex power spirals\n'
-              '14. Exponential: pi^(z/2)\n'
-              '15. Riemann partial sum\n'
-              '16. 1 - 2 ^ (1-s)')
+              '14. Exponential: pi^(z/2)\n')
         selection = input("Select type: ")
         selection = int(selection)
 
-        t1 = time.time()
-
-        # Create blank figure
-        plt.rcParams['figure.figsize'] = 12, 12
-        fig2 = plt.figure()
-        fig2.canvas.mpl_connect('key_press_event', on_keypress)
-        #    plt.gca().figure.canvas.mpl_connect('key_press_event', on_keypress)
-
-        # Make smaller margins
-        plt.tight_layout()
-        # Make even smaller margins
-        plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
-
-        # Draw plot
-        make_plot(selection, screen_y)
-
-        # Report time delay
-        print('Completed domain coloring plot in ' + str(time.time() - t1) + ' seconds')
-
-        print("Press x to exit, n for next plot (focus must be on Riemann window)")
-        next_flag = False
-        while True:
-            if qFlag:
-                break
-            if next_flag:
-                break
-            plt.pause(0.05)
-
-        if qFlag:
-            break

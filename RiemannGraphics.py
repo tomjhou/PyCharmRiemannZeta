@@ -489,6 +489,7 @@ class GraphicsObjects:
 
         if gv.pltLineCollection is not None:
             gv.pltLineCollection.remove()
+
         # pre-generate entire line
         th2b = rm.Riemann(gv.th1)
         if flagAxisScaleIndex > 0:
