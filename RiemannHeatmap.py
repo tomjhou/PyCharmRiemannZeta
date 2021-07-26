@@ -1,5 +1,8 @@
 #
-# Code is copied from here: https://nbviewer.jupyter.org/github/empet/Math/blob/master/DomainColoring.ipynb
+# Plots complex functions as headmaps
+#
+# Domain coloring code is copied from here:
+# https://nbviewer.jupyter.org/github/empet/Math/blob/master/DomainColoring.ipynb
 #
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -217,14 +220,15 @@ def on_keypress(event):
     if event.key == "n":
         next_flag = True
 
-
-def RiemannPartial(s, partial_sum):
+# This works whether is is single number or vector
+def RiemannPartial(s, partial_sum_limit):
     r_sum = 1
 
     if partial_sum <= 1:
         return 1
 
-    for x in range(1, partial_sum):
+    for x in range(1, partial_sum_limit):
+
         if np.mod(x, 2) == 0:
             # Note that even though index is EVEN, the denominator is ODD,
             # since it is 1/((x+1)^s)
@@ -356,18 +360,17 @@ def make_plot(_selection):
         # This sum converges for Re(s) > 0
         global next_flag
 
-        partial_sum = 2
+        partial_sum_limit = 2
         for x in range(1, 100):
 
-
-            plot_domain2(lambda z: RiemannPartial(z, partial_sum),
-                         re=[x_center, x_center + 2],
+            plot_domain2(lambda z: RiemannPartial(z, partial_sum_limit),
+                         re=[x_center - 1, x_center + 3],
                          im=[y_min, y_max],
-                         title='Riemann partial sum ' + str(partial_sum))
+                         title='Riemann partial sum ' + str(partial_sum_limit))
 
             settings.REUSE_FIGURE = True
 
-            partial_sum = partial_sum * 2
+            partial_sum_limit = partial_sum_limit * 2
             plt.pause(0.2)
 
             if rm.quit_computation_flag:
