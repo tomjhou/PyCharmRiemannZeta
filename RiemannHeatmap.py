@@ -15,7 +15,6 @@ import time
 import RiemannMath as rm
 
 
-rm.RIEMANN_ITER_LIMIT = 80
 USE_BUTTON_PANEL = True
 SHOW_PROGRESS_UPDATE = True
 mesh_points = 0
@@ -30,7 +29,7 @@ class Settings:
 
 
 Settings.SCALE = .98       # Plot size as a function of screen height
-Settings.MESH_DENSITY = 0.25  # Set # of mesh points as a function of "standard"
+Settings.MESH_DENSITY = 0.35  # Set # of mesh points as a function of "standard"
 Settings.oversample = False
 Settings.REUSE_FIGURE = False
 Settings.phase_only = False
@@ -101,6 +100,10 @@ checkbox_list = ["Autorecalculate",
                  "Im>0 only",
                  "Phase only"]
 
+if __name__ == "__main__":
+    print("\nPlease run main.py instead of this file. Thank you!!")
+
+
 if False:
 
     # Old text-based selection method
@@ -121,7 +124,7 @@ def g(x):
     return (1 - 1 / (1 + x ** 2)) ** 0.2
 
 
-def fmt(n: np.float):
+def fmt(n: float):
     if n >= 500000:
         return '{:1.2f}'.format(n / 1000000) + 'M'
 
@@ -249,19 +252,23 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
 
     # Report time delay
-    delay = time.time() - t1
-    print('Completed domain coloring plot in ' + str(delay) + ' seconds')
-    rate = mesh_points / delay
-    print('Rate: ' + fmt(rate) + ' points per second')
+    if mesh_points > 0:
+        delay = time.time() - t1
+        print('Completed domain coloring plot in ' + str(delay) + ' seconds')
+        rate = mesh_points / delay
+        print('Rate: ' + fmt(rate) + ' points per second')
+
+        try:
+            bmgr.canvas_plot.draw()
+            bmgr.canvas_plot.flush_events()
+        except:
+            print("canvas_plot invalid. Did you close the previous window?")
+            # If we recalculated but closed the original plot, then there will be a new figure generated
+            # automatically, but bmgr.canvas_plot will not be valid, and we need plt.pause() to show figure
+            plt.pause(0.001)
 
     if update_progress_callback is not None:
         update_progress_callback(100)
-
-    if bmgr.canvas_buttons is not None:
-        bmgr.canvas_buttons.draw()
-
-    bmgr.canvas_plot.draw()
-    bmgr.canvas_plot.flush_events()
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -271,6 +278,9 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
 
     # Evaluate function f on a grid of points
     w, mesh = eval_grid(f, re, im, density)
+
+    if rm.quit_computation_flag:
+        return 0
 
     # Convert results to color
     domc = color_func(w, saturation)
@@ -297,8 +307,8 @@ def on_keypress(event):
         next_flag = True
 
 
-# This works whether is is single number or vector
-def RiemannPartial(s, partial_sum_limit):
+# This works whether s is single number or vector
+def riemann_partial_sum(s, partial_sum_limit):
 
     r_sum = 1
 
@@ -319,7 +329,7 @@ def RiemannPartial(s, partial_sum_limit):
             update_progress_callback(100*(x+1)/partial_sum_limit)
 
         if rm.quit_computation_flag:
-            print("Cancelled by user after " + x + " iterations")
+            print("Partial sum cancelled by user after " + str(x) + " of " + str(partial_sum_limit) + " iterations")
             break
 
     return r_sum
@@ -348,7 +358,7 @@ def make_plot(_selection):
     elif _selection == 1:
         # Standard version, critical strip centered at (0,0)
         plot_domain2(lambda z: rm.Riemann(z),
-                     re=[x_center, x_center + 2],
+                     re=[x_center - 1, x_center + 2],
                      im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 2:
@@ -461,7 +471,7 @@ def make_plot(_selection):
         partial_sum_limit = 2
         for x in range(0, 20):
 
-            plot_domain2(lambda z: RiemannPartial(z, partial_sum_limit),
+            plot_domain2(lambda z: riemann_partial_sum(z, partial_sum_limit),
                          re=[x_center - 1, x_center + 3],
                          im=[y_min, y_max],
                          title='Riemann partial sum ' + str(partial_sum_limit))

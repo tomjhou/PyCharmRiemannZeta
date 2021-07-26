@@ -14,6 +14,7 @@ else:
     ans = "2"
 
 if ans == "1":
+    rm.RIEMANN_ITER_LIMIT = 150  # Use higher value to get more precision
     import RiemannVectors
 elif ans == "2":
 
@@ -161,6 +162,10 @@ elif ans == "2":
             rh.rm.computation_progress_callback = rh.update_computation_status
 
         def set_initial_vals(self):
+
+            # User lower value to speed up calculations
+            rh.rm.RIEMANN_ITER_LIMIT = 25
+
             # These must go outside constructor, as they will trigger callback
             # which needs access to mainApp object
             self.slider1.set(rh.Settings.MESH_DENSITY)

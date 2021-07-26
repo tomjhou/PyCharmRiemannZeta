@@ -10,7 +10,7 @@ computation_progress_callback = None
 # This can be set by caller, to halt ongoing computation (only works with Riemann)
 quit_computation_flag = False
 
-RIEMANN_ITER_LIMIT = 150  # Default. Can be overridden
+RIEMANN_ITER_LIMIT = 40  # Default. Can be overridden
 NK2_array = []
 NK1_array = []
 
