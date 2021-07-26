@@ -4,39 +4,111 @@
 # Domain coloring code is copied from here:
 # https://nbviewer.jupyter.org/github/empet/Math/blob/master/DomainColoring.ipynb
 #
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
-import RiemannMath as rm
 from scipy.special import gamma
 import time
-import ButtonManager as bm
+
+import RiemannMath as rm
+
 
 rm.RIEMANN_ITER_LIMIT = 80
 USE_BUTTON_PANEL = True
 SHOW_PROGRESS_UPDATE = True
-slider_progress = None
 mesh_points = 0
 qFlag = False
 next_flag = False
+update_progress_callback = None
+callCount = 0
 
 
-class settings:
+class Settings:
     pass
 
 
-settings.SCALE = .98       # Plot size as a function of screen height
-settings.MESH_DENSITY = 0.25  # Set # of mesh points as a function of "standard"
-settings.oversample = False
-settings.REUSE_FIGURE = False
-settings.phase_only = False
-settings.top_only = True
-settings.last_selection = 0  # Save last graph selection so we can recalculate
-settings.autorecalculate = False
-settings.oversample = False
+Settings.SCALE = .98       # Plot size as a function of screen height
+Settings.MESH_DENSITY = 0.25  # Set # of mesh points as a function of "standard"
+Settings.oversample = False
+Settings.REUSE_FIGURE = False
+Settings.phase_only = False
+Settings.top_only = True
+Settings.last_selection = 0  # Save last graph selection so we can recalculate
+Settings.autorecalculate = False
+Settings.oversample = False
 
 print('Done importing libraries')
+
+
+def make_fig_plot(event, _id):
+    if _id < 0:
+        # Negative ID is the recalculate button
+        _id = Settings.last_selection
+        Settings.REUSE_FIGURE = True
+    else:
+        Settings.last_selection = _id
+    make_plot(_id)
+    plt.pause(.001)
+
+
+def do_quit(event):
+    global qFlag
+
+    rm.quit_computation_flag = True
+    qFlag = True
+
+
+def update_computation_status():
+    global callCount
+    callCount = callCount + 1
+    if update_progress_callback is not None:
+        if np.mod(callCount, 100) == 0:
+            update_progress_callback(callCount * 100 / mesh_points)
+    else:
+        if np.mod(callCount, 20000) == 0:
+            print("   \r" + str(int(callCount / 1000)) + "k ", end='')  # Print status every 10k samples
+
+
+
+mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
+# mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
+
+bmgr = None
+
+# New button-based GUI selection method
+plot_list = {
+    0: "Pinwheel",
+    1: "Riemann, strip",
+    2: "Riemann, square20",
+    4: "Symmetric Riemann, strip",
+    5: "Symmetric Riemann, square2",
+    19: "Symmetric Riemann, square20",
+    7: "Gamma, strip",
+    8: "Gamma, square4",
+    18: "Gamma, square20",
+    10: "Sine",
+    11: "Cosine",
+    12: "Exponential",
+    13: "Power (spiral)",
+    15: "Riemann partial sum",
+    16: "1 - 2 ^ (1-s)",
+    17: "Dirichlet eta"
+}
+
+checkbox_list = ["Autorecalculate",
+                 "Im>0 only",
+                 "Phase only"]
+
+if False:
+
+    # Old text-based selection method
+    print('Select plot type:\n'
+          '3. Standard Riemann, zoomed critical strip\n'
+          '6. Symmetric Riemann, zoomed critical strip\n'
+          '9. Gamma, zoomed critical strip\n'
+          '14. Exponential: pi^(z/2)\n')
 
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
@@ -74,13 +146,9 @@ def eval_grid(f, re, im, n):
     x, y = np.meshgrid(x, y)
     z = x + 1j * y
 
-    rm.callCount = 0
     print('Mesh has ' + str(int(res_w)) + " x " + str(int(res_h)) + " = " + fmt(np.size(z)) + ' points')
 
     mesh_points = np.size(z)
-    if slider_progress is not None:
-        slider_progress.set_val(0)
-    plt.pause(0.001)
 
     return f(z), z
 
@@ -94,7 +162,7 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
     # w is the  array of values f(z)
     # s is the constant saturation
 
-    global settings
+    global Settings
 
     H = Hcomplex(w)  # Determine hue
     # S = s * np.ones(H.shape)  # Saturation = 1.0 always
@@ -102,7 +170,7 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
     mag = np.absolute(w)  #
     mag = np.where(mag < 1e-323, 1e-323, mag)  # To avoid divide by zero errors, impose a min magnitude
 
-    if settings.phase_only:
+    if Settings.phase_only:
         v = 1
     else:
         elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
@@ -149,29 +217,35 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
 # Creates figure, then calls plot_domain with standard options. When done, calculates
 # points per second calculation speed
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
-    global settings, mesh_points
+    global Settings, mesh_points, callCount
 
-    if settings.REUSE_FIGURE:
-        plt.figure(settings.last_figure.number)
+    if not hasattr(Settings, 'last_figure'):
+        Settings.REUSE_FIGURE = False
+
+    if Settings.REUSE_FIGURE:
+        plt.figure(Settings.last_figure.number)
         # Clear flag so that we only reuse once. If we want to
         # reuse again, caller must set flag again
-        settings.REUSE_FIGURE = False
+        Settings.REUSE_FIGURE = False
     else:
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
-        fig = bmgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
+        fig = bmgr.make_plot_fig(Settings.SCALE * aspect, Settings.SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
-        settings.last_figure = fig
+        Settings.last_figure = fig
         fig.canvas.draw()
+
+    callCount = 0
+    if update_progress_callback is not None:
+        update_progress_callback(0)
 
     t1 = time.time()
 
-    density = bmgr.screen_y_pixels / abs(im[1] - im[0]) * settings.MESH_DENSITY
-    if settings.oversample:
+    density = bmgr.screen_y_pixels / abs(im[1] - im[0]) * Settings.MESH_DENSITY
+    if Settings.oversample:
         density = density * 4
 
-    # We already calculated mesh_points earlier, but this time we get it from the
-    # real mesh. The value should be exactly the same, so this is redundant.
+    # Mesh points is calculated here. Prior to calling this, it will be zero.
     mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
 
     # Report time delay
@@ -180,8 +254,8 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     rate = mesh_points / delay
     print('Rate: ' + fmt(rate) + ' points per second')
 
-    if slider_progress is not None:
-        slider_progress.set_val(100)
+    if update_progress_callback is not None:
+        update_progress_callback(100)
 
     if bmgr.canvas_buttons is not None:
         bmgr.canvas_buttons.draw()
@@ -191,13 +265,15 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
-                s=0.9,  # Saturation
+                saturation=0.9,  # Saturation
                 density=200,  # Number of points per unit interval
                 show_axis=None):  # Whether to show axis
 
     # Evaluate function f on a grid of points
     w, mesh = eval_grid(f, re, im, density)
-    domc = color_func(w, s)
+
+    # Convert results to color
+    domc = color_func(w, saturation)
     plt.xlabel("$\Re(z)$")
     plt.ylabel("$\Im(z)$")
     plt.title(title)
@@ -220,11 +296,13 @@ def on_keypress(event):
     if event.key == "n":
         next_flag = True
 
+
 # This works whether is is single number or vector
 def RiemannPartial(s, partial_sum_limit):
+
     r_sum = 1
 
-    if partial_sum <= 1:
+    if partial_sum_limit <= 1:
         return 1
 
     for x in range(1, partial_sum_limit):
@@ -232,10 +310,18 @@ def RiemannPartial(s, partial_sum_limit):
         if np.mod(x, 2) == 0:
             # Note that even though index is EVEN, the denominator is ODD,
             # since it is 1/((x+1)^s)
-            r_sum = r_sum + np.power(x + 1, -s)
+            r_sum += np.power(x + 1, -s)
         else:
             # ODD index for EVEN denominators
-            r_sum = r_sum - np.power(x + 1, -s)
+            r_sum -= np.power(x + 1, -s)
+
+        if update_progress_callback is not None:
+            update_progress_callback(100*(x+1)/partial_sum_limit)
+
+        if rm.quit_computation_flag:
+            print("Cancelled by user after " + x + " iterations")
+            break
+
     return r_sum
 
 
@@ -245,18 +331,16 @@ def make_plot(_selection):
     y_center = 0
     rm.quit_computation_flag = False
 
-    if (0 < _selection <= 6) or (_selection == 17):
+    if (0 < _selection <= 6) or (_selection == 17) or (_selection == 19):
         rm.precompute_coeffs()
 
     print('Please wait while computing heatmap... (this may take a minute or two)')
 
     y_max = 30
-    if settings.top_only:
+    if Settings.top_only:
         y_min = 0
     else:
         y_min = -30
-
-    y_range = abs(y_max - y_min)
 
     if _selection == 0:
         mesh_size = 10
@@ -296,6 +380,13 @@ def make_plot(_selection):
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+    elif _selection == 19:
+        # Symmetric version, square
+        mesh_size = 20
+        plot_domain2(lambda z: rm.RiemannSymmetric(z),
+                     re=[x_center - mesh_size, x_center + mesh_size],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 6:
         # Symmetric version, zoomed into 0.5 + 50j
         mesh_size = 10
@@ -314,6 +405,13 @@ def make_plot(_selection):
     elif _selection == 8:
         # Gamma(s/2) function, square
         mesh_size = 4
+        plot_domain2(lambda z: gamma(z),
+                     re=[x_center - mesh_size, x_center + mesh_size],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+                     title='gamma($z$)')
+    elif _selection == 18:
+        # Gamma(s/2) function, square
+        mesh_size = 20
         plot_domain2(lambda z: gamma(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
@@ -361,22 +459,23 @@ def make_plot(_selection):
         global next_flag
 
         partial_sum_limit = 2
-        for x in range(1, 100):
+        for x in range(0, 20):
 
             plot_domain2(lambda z: RiemannPartial(z, partial_sum_limit),
                          re=[x_center - 1, x_center + 3],
                          im=[y_min, y_max],
                          title='Riemann partial sum ' + str(partial_sum_limit))
 
-            settings.REUSE_FIGURE = True
+            Settings.REUSE_FIGURE = True
 
             partial_sum_limit = partial_sum_limit * 2
-            plt.pause(0.2)
+
+            #plt.pause(0.2)
 
             if rm.quit_computation_flag:
                 break
 
-        settings.REUSE_FIGURE = False
+        Settings.REUSE_FIGURE = False
 
     elif _selection == 16:
         # This is the function that converts Riemann zeta to Dirichlet eta function
@@ -397,129 +496,4 @@ def make_plot(_selection):
 
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
 
-
-def make_fig_plot(event, _id):
-    if _id < 0:
-        # Negative ID is the recalculate button
-        _id = settings.last_selection
-        settings.REUSE_FIGURE = True
-    else:
-        settings.last_selection = _id
-    make_plot(_id)
-    plt.pause(.001)
-
-
-def do_quit(event):
-    global qFlag
-
-    rm.quit_computation_flag = True
-    qFlag = True
-
-
-def do_submit(text, _id):
-    print("Object id: " + str(_id) + ", entered: " + text)
-
-
-def do_slider_density_update(val):
-    #    print("slider: " + str(val))
-    settings.MESH_DENSITY = val
-
-
-# This is NOT the usual widget callback in response to user input.
-# Rather it is called from rm.Riemann, in response to computational progress
-def do_slider_progress_update(val):
-    if not SHOW_PROGRESS_UPDATE:
-        return
-
-    print("  \r" + '{:1.2f}'.format(val * 100 / mesh_points) + "%", end="")
-
-#    slider_progress.set_val(100 * val / mesh_points)
-#    bmgr.canvas_buttons.draw()  # Redraw menu
-    bmgr.canvas_buttons.flush_events()
-
-
-def do_checkbox(label):
-    index = checkbox_list.index(label)
-    if index == 0:
-        settings.autorecalculate = not settings.autorecalculate
-    elif index == 1:
-        settings.top_only = not settings.top_only
-    elif index == 2:
-        settings.phase_only = not settings.phase_only
-
-
-def do_slider(val, _id):
-    # negative id is the progress bar, which should not respond to user input
-    if _id >= 0:
-        slider_val[id] = val
-
-
-# Dictionaries to store widget axes.
-# Each widget needs a unique axis object used to assign callback.
-# Even though we don't use these objects after initial definition,
-# it seems we can't recycle the variable name, as the callbacks will then
-# only work for the last item assigned.
-button_ax_list = {}
-slider_ax_list = {}
-text_box_ax_list = {}
-
-# Dictionary to store user input from each slider
-slider_val = {}
-
-
-def AddIdButton(text, _id):
-    button_ax_list[_id] = bmgr.add_id_button(text, _id)
-    button_ax_list[_id].on_clicked(lambda x: make_fig_plot(x, button_ax_list[_id].id))
-
-
-def AddIdSlider2(text, _id, **kwargs):
-    slider_ax_list[_id] = bmgr.add_id_slider(text, _id, **kwargs)
-    slider_ax_list[_id].on_changed(lambda x: do_slider(x, slider_ax_list[_id].id))
-    return slider_ax_list[_id]
-
-
-def AddIdTextBox(text, _id):
-    text_box_ax_list[_id] = bmgr.add_textbox(text, _id)
-    text_box_ax_list[_id].on_submit(lambda x: do_submit(x, text_box_ax_list[_id].id))
-
-
-mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
-# mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
-
-
-bmgr = None
-
-# New button-based GUI selection method
-plot_list = {
-    0: "Pinwheel",
-    1: "Riemann, strip",
-    2: "Riemann, square",
-    4: "Symmetric Riemann, strip",
-    5: "Symmetric Riemann, square",
-    7: "Gamma, strip",
-    8: "Gamma, square",
-    10: "Sine",
-    11: "Cosine",
-    12: "Exponential",
-    13: "Power (spiral)",
-    15: "Riemann partial sum",
-    16: "1 - 2 ^ (1-s)",
-    17: "Dirichlet eta"
-}
-
-checkbox_list = ["Autorecalculate",
-                 "Im>0 only",
-                 "Phase only"]
-
-if False:
-
-    # Old text-based selection method
-    while True:
-        print('Select plot type:\n'
-              '3. Standard Riemann, zoomed critical strip\n'
-              '6. Symmetric Riemann, zoomed critical strip\n'
-              '9. Gamma, zoomed critical strip\n'
-              '14. Exponential: pi^(z/2)\n')
-        selection = input("Select type: ")
-        selection = int(selection)
 

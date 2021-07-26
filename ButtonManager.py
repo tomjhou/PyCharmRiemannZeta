@@ -72,6 +72,7 @@ class ButtonManager:
 
         self.fig_plot = plt.figure()
         self.set_figure_size(self.fig_plot, x_size, y_size)
+        plt.pause(0.001)   # Need this or figure won't show
         self.canvas_plot = self.fig_plot.canvas
 
         # Make smaller margins

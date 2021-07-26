@@ -2,12 +2,10 @@ import numpy as np
 # from math import comb # No longer needed because we use faster Pascal method to calculate n_choose_k
 from scipy.special import gamma
 
-callCount = 0
-
 outArray = []
 
 # This should be set by caller, to handle computational progress
-slider_progress_callback = None
+computation_progress_callback = None
 
 # This can be set by caller, to halt ongoing computation (only works with Riemann)
 quit_computation_flag = False
@@ -20,7 +18,7 @@ NK1_array = []
 def precompute_coeffs():
     global NK2_array, NK1_array
     NK2_array = np.zeros(RIEMANN_ITER_LIMIT)
-    print("Precomputing coefficients for Riemann/Dirichlet sum using Euler's transformation...")
+#    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum using Euler's transformation...", end="")
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
     NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT))
@@ -38,23 +36,12 @@ def precompute_coeffs():
             tmp_sum += NK1_array[n, k]  # comb(n,k) / (2 ** (n+1))
         NK2_array[k] = ((-1) ** k) * tmp_sum
 
-    print("Done precomputing coefficients\n")
+#    print("Done!")
 
 
 def EtaToZetaScale(v):
     # Scale factor converts Dirichlet eta function to Riemann zeta function
     return 1 / (1 - 2 ** (1 - v))
-
-
-def print_status():
-    global callCount
-    callCount = callCount + 1
-    if slider_progress_callback is not None:
-        if np.mod(callCount, 100) == 0:
-            slider_progress_callback(callCount)
-    else:
-        if (np.mod(callCount, 20000) == 0) & (slider_progress_callback is not None):
-            print("   \r" + str(int(callCount / 1000)) + "k ", end='')  # Print status every 10k samples
 
 
 #
@@ -83,7 +70,7 @@ def Riemann(s, get_array_size=False, do_eta=False):
 
     if s == 1.0:
         # Calculation blows up at 1.0, so return nan
-        print_status()
+        computation_progress_callback()
         return np.nan
 
     if np.real(s) < 0:
@@ -138,7 +125,7 @@ def Riemann(s, get_array_size=False, do_eta=False):
         if store_intermediates or get_array_size:
             partial_sum_index = partial_sum_index + 1
 
-    print_status()
+    computation_progress_callback()
 
     if get_array_size:
         return cum_sum, partial_sum_index
