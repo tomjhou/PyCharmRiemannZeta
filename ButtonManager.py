@@ -11,6 +11,8 @@ class ButtonManager:
 
         self.backend = mpl.get_backend()
 
+        fig_tmp = plt.figure()
+        self.dpi = fig_tmp.dpi
         window = plt.get_current_fig_manager().window
 
         if self.backend == "Qt5Agg":
@@ -43,7 +45,6 @@ class ButtonManager:
 
             # Create figure 2 with buttons
             self.fig_buttons = plt.figure(2)
-            self.dpi = self.fig_buttons.dpi
 
             # Buttons on plot window cause annoying flicker whenever mouse moves over button
             # (even if not clicked). Solve this by putting menu buttons on their own window
@@ -55,6 +56,11 @@ class ButtonManager:
             self.canvas_buttons = self.fig_buttons.canvas
             # Put button window at top left of screen
             self.move_window(self.canvas_buttons, 25, 25)
+
+        else:
+
+            self.canvas_buttons = None
+            self.menu_width_pixels = 500
 
         # Create figure 1 for main plots
         self.fig_plot = None

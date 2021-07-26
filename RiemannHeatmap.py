@@ -31,6 +31,7 @@ settings.phase_only = False
 settings.top_only = True
 settings.last_selection = 0  # Save last graph selection so we can recalculate
 settings.autorecalculate = False
+settings.oversample = False
 
 print('Done importing libraries')
 
@@ -74,7 +75,8 @@ def eval_grid(f, re, im, n):
     print('Mesh has ' + str(int(res_w)) + " x " + str(int(res_h)) + " = " + fmt(np.size(z)) + ' points')
 
     mesh_points = np.size(z)
-    slider_progress.set_val(0)
+    if slider_progress is not None:
+        slider_progress.set_val(0)
     plt.pause(0.001)
 
     return f(z), z
@@ -141,7 +143,8 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
     return RGB
 
 
-# Creates figure, then calls plot_domain with standard options
+# Creates figure, then calls plot_domain with standard options. When done, calculates
+# points per second calculation speed
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
     global settings, mesh_points
 
@@ -161,6 +164,9 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     t1 = time.time()
 
     density = bmgr.screen_y_pixels / abs(im[1] - im[0]) * settings.MESH_DENSITY
+    if settings.oversample:
+        density = density * 4
+
     # We already calculated mesh_points earlier, but this time we get it from the
     # real mesh. The value should be exactly the same, so this is redundant.
     mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
@@ -171,8 +177,14 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     rate = mesh_points / delay
     print('Rate: ' + fmt(rate) + ' points per second')
 
-    slider_progress.set_val(100)
-    bmgr.canvas_buttons.draw()
+    if slider_progress is not None:
+        slider_progress.set_val(100)
+
+    if bmgr.canvas_buttons is not None:
+        bmgr.canvas_buttons.draw()
+
+    bmgr.canvas_plot.draw()
+    bmgr.canvas_plot.flush_events()
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -227,6 +239,7 @@ def make_plot(_selection):
 
     x_center = 0
     y_center = 0
+    rm.quit_computation_flag = False
 
     if (0 < _selection <= 6) or (_selection == 17):
         rm.precompute_coeffs()
@@ -345,6 +358,8 @@ def make_plot(_selection):
 
         partial_sum = 2
         for x in range(1, 100):
+
+
             plot_domain2(lambda z: RiemannPartial(z, partial_sum),
                          re=[x_center, x_center + 2],
                          im=[y_min, y_max],
@@ -355,7 +370,7 @@ def make_plot(_selection):
             partial_sum = partial_sum * 2
             plt.pause(0.2)
 
-            if next_flag:
+            if rm.quit_computation_flag:
                 break
 
         settings.REUSE_FIGURE = False
@@ -375,11 +390,14 @@ def make_plot(_selection):
                      im=[y_min, y_max],
                      title='Eta($s$)')
 
+    rm.quit_computation_flag = False
+
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
 
 
 def make_fig_plot(event, _id):
     if _id < 0:
+        # Negative ID is the recalculate button
         _id = settings.last_selection
         settings.REUSE_FIGURE = True
     else:

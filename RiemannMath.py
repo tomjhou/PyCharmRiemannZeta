@@ -50,18 +50,12 @@ def print_status():
     global callCount
     callCount = callCount + 1
     if slider_progress_callback is not None:
-        if np.mod(callCount, 500) == 0:
+        if np.mod(callCount, 100) == 0:
             slider_progress_callback(callCount)
     else:
         if (np.mod(callCount, 20000) == 0) & (slider_progress_callback is not None):
             print("   \r" + str(int(callCount / 1000)) + "k ", end='')  # Print status every 10k samples
 
-
-def dummy_test(s):
-    if np.size(s) > 1:
-        return [dummy_test(x) for x in s]
-    print_status()
-    return 0
 
 #
 # Calculate Riemann zeta function for complex input s.
@@ -85,8 +79,7 @@ def Riemann(s, get_array_size=False, do_eta=False):
     global callCount
 
     if np.size(s) > 1:
-        quit_computation_flag = False
-        return [Riemann(x, do_eta=do_eta) if not quit_computation_flag else dummy_test(x) for x in s]
+        return [0.0 if quit_computation_flag else Riemann(x, do_eta=do_eta) for x in s]
 
     if s == 1.0:
         # Calculation blows up at 1.0, so return nan
