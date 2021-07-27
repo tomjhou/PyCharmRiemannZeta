@@ -72,13 +72,17 @@ def do_heatmap():
     #        mainApp.update_idletasks()
 
     def do_phase():
-        rh.Settings.phase_only = not rh.Settings.phase_only
+        rh.Settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
 
     def do_oversample():
-        rh.Settings.oversample = not rh.Settings.oversample
+        rh.Settings.oversample = win_heatmap.var_oversample.get()  # not rh.Settings.oversample
 
     def do_auto_recalculate():
-        rh.Settings.auto_recalculate = not rh.Settings.auto_recalculate
+        rh.Settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
+        if rh.Settings.auto_recalculate:
+            # Set slider to min value when auto recalc is turned on.
+            # This will now trigger an initial recalc
+            win_heatmap.slider1.set(win_heatmap.slider1.cget('from'))
 
     class WinHeatMap:
         def __init__(self, win):

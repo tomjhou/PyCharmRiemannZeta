@@ -471,14 +471,14 @@ def make_plot(_selection):
         plot_domain2(lambda z: np.power(a, z) + b,
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='3^$z$')
+                     title='{:1.2f}'.format(a) + '^$z$' + ' + {:1.2f}'.format(b))
     elif _selection == 13:
         # complex power function, square
         mesh_size = 40
         plot_domain2(lambda z: np.power(z, a - 1j*b),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='$z$^(3-8j)')
+                     title='$z$^(' + '{:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j)')
     elif _selection == 14:
         #  pi ^ (z/2), one of the two functions multiplied by Riemann to get symmetric Riemann
         mesh_size = 40
