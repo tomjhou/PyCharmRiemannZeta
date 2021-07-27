@@ -1,9 +1,11 @@
 #
-# Plots complex functions as headmaps
+# Plots complex functions as heatmaps
 #
 # Domain coloring code is copied from here:
 # https://nbviewer.jupyter.org/github/empet/Math/blob/master/DomainColoring.ipynb
 #
+import tkinter
+import typing
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,22 +14,22 @@ from matplotlib.colors import hsv_to_rgb
 from scipy.special import gamma
 import time
 
-import RiemannMath as rm
+import riemann_math as rm
 
 
-USE_BUTTON_PANEL = True
-SHOW_PROGRESS_UPDATE = True
-mesh_points = 0
-qFlag = False
-next_flag = False
-update_progress_callback = None
-callCount = 0
+print('Done importing libraries')
+
+mesh_points = 0  # Number of mesh points. Used to convert progress calls to percent
+qFlag = False    # Becomes true when user clicks "quit" button. Causes computations to wind down gracefully and stop
+update_progress_callback: typing.Callable[[float], None]  # = None
+callCount = 0    # Incremented with each stop of a long computation. Used to generate progress bar
 
 
 class Settings:
     pass
 
 
+# Static variables (this class is never instantiated)
 Settings.SCALE = .98       # Plot size as a function of screen height
 Settings.MESH_DENSITY = 0.35  # Set # of mesh points as a function of "standard"
 Settings.oversample = False
@@ -38,10 +40,8 @@ Settings.last_selection = 0  # Save last graph selection so we can recalculate
 Settings.autorecalculate = False
 Settings.oversample = False
 
-print('Done importing libraries')
 
-
-def make_fig_plot(event, _id):
+def make_fig_plot(_event, _id):
     if _id < 0:
         # Negative ID is the recalculate button
         _id = Settings.last_selection
@@ -52,7 +52,7 @@ def make_fig_plot(event, _id):
     plt.pause(.001)
 
 
-def do_quit(event):
+def do_quit(_event):
     global qFlag
 
     rm.quit_computation_flag = True
@@ -70,11 +70,11 @@ def update_computation_status():
             print("   \r" + str(int(callCount / 1000)) + "k ", end='')  # Print status every 10k samples
 
 
-
 mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
 # mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
 
-bmgr = None
+import mpl_figure_manager as mfm
+fig_mgr: mfm.MplFigureManager   # = None
 
 # New button-based GUI selection method
 plot_list = {
@@ -98,7 +98,7 @@ plot_list = {
     20: "Riemann * Gamma"
 }
 
-checkbox_list = ["Autorecalculate",
+checkbox_list = ["Auto recalculate",
                  "Im>0 only",
                  "Phase only"]
 
@@ -118,8 +118,10 @@ if False:
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
 def Hcomplex(z):
+
     h = np.angle(z) / (2 * np.pi) + 1  # Add 1 to avoid negative values.
-    return np.mod(h, 1)  # mod returns remainder. This is equivalent to taking decimal portion
+    # mod(h,1) returns remainder, i.e. portion after decimal point
+    return np.mod(h, 1)
 
 
 def g(x):
@@ -235,7 +237,7 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     else:
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
-        fig = bmgr.make_plot_fig(Settings.SCALE * aspect, Settings.SCALE)
+        fig = fig_mgr.make_plot_fig(Settings.SCALE * aspect, Settings.SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
         Settings.last_figure = fig
         fig.canvas.draw()
@@ -246,7 +248,7 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
 
     t1 = time.time()
 
-    density = bmgr.screen_y_pixels / abs(im[1] - im[0]) * Settings.MESH_DENSITY
+    density = fig_mgr.screen_y_pixels / abs(im[1] - im[0]) * Settings.MESH_DENSITY
     if Settings.oversample:
         density = density * 4
 
@@ -261,16 +263,23 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         print('Rate: ' + fmt(rate) + ' points per second')
 
         try:
-            bmgr.canvas_plot.draw()
-            bmgr.canvas_plot.flush_events()
-        except:
-            print("canvas_plot invalid. Did you close the previous window?")
+            fig_mgr.canvas_plot.draw()
+#            fig_mgr.canvas_plot.flush_events()   # Doesn't seem to be needed
+        except tkinter.TclError:
+            print("Previous canvas (fig_mgr.canvas_plot) invalid. Did you close previous window?")
             # If we recalculated but closed the original plot, then there will be a new figure generated
-            # automatically, but bmgr.canvas_plot will not be valid, and we need plt.pause() to show figure
-            plt.pause(0.001)
+            # automatically, but fig_mgr.canvas_plot will not be valid, and we need plt.pause() to show figure
+#            plt.pause(0.001)
 
-    if update_progress_callback is not None:
-        update_progress_callback(100)
+            # Get current figure and save it, so that next recalculate will work normally.
+            fig_mgr.fig_plot = plt.gcf()
+            fig_mgr.canvas_plot = fig_mgr.fig_plot.canvas
+
+            # Show figure
+            fig_mgr.fig_plot.show()
+
+        if update_progress_callback is not None:
+            update_progress_callback(100)
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -282,6 +291,8 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
     w, mesh = eval_grid(f, re, im, density)
 
     if rm.quit_computation_flag:
+        print("Calculation cancelled by user after " + str(callCount) + " of " +
+              str(mesh_points) + " points = " + '{:1.2f}'.format(100*callCount/mesh_points) + " %")
         return 0
 
     # Convert results to color
@@ -301,12 +312,10 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
 
 
 def on_keypress(event):
-    global qFlag, next_flag
+    global qFlag
     if event.key == "x":
         qFlag = True
         print("User pressed x on keyboard")
-    if event.key == "n":
-        next_flag = True
 
 
 # This works whether s is single number or vector
@@ -475,7 +484,6 @@ def make_plot(_selection):
     elif _selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
-        global next_flag
 
         partial_sum_limit = 2
         for x in range(0, 20):
@@ -489,7 +497,7 @@ def make_plot(_selection):
 
             partial_sum_limit = partial_sum_limit * 2
 
-            #plt.pause(0.2)
+            # plt.pause(0.2)
 
             if rm.quit_computation_flag:
                 break
@@ -507,18 +515,16 @@ def make_plot(_selection):
     elif _selection == 17:
         #  Dirichlet Eta instead of Riemann zeta
         plot_domain2(lambda z: rm.Riemann(z, do_eta=True),
-                     re=[x_center - 1, x_center + 2],
+                     re=[x_center - 1, x_center + 3],
                      im=[y_min, y_max],
-                     title='Eta($s$)')
+                     title='Eta($z$)')
     elif _selection == 20:
         mesh_size = 60
         plot_domain2(lambda z: rm.RiemannGamma(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='Riemann(s) * Gamma($s$)')
+                     title='Riemann(z) * Gamma($z$)')
 
     rm.quit_computation_flag = False
 
     print()  # Riemann prints updates periodically - add newline in case Riemann did not
-
-

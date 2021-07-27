@@ -7,7 +7,7 @@ from matplotlib.collections import LineCollection
 import matplotlib.pylab as pl
 
 import global_vars as gv
-import RiemannMath as rm
+import riemann_math as rm
 
 # Button dimensions
 BUTTON_WIDTH = 0.1
@@ -40,8 +40,8 @@ flagAnimateSpeedIndex = 0
 flagSavedAnimateSpeedIndex = 0  # When we pause, index is saved here so we can unpause and resume original speed
 
 RESOLUTION_BOOST = 5    # Extra resolution when animation slows down
-quitflag = False  # When true, program will exit
-flagRecalc = False  # When true, will redraw existing graph items
+quit_flag = False  # When true, program will exit
+flagRecalculate = False  # When true, will redraw existing graph items
 flagRedrawAxes = False  # When true, will redraw existing graph axes
 flagChangeMatrix = False  # When true, will update matrix and redraw
 flagRestartAnimation = False
@@ -54,7 +54,7 @@ flagY = 0  # Indicates mouse y position
 flagBidirectional = False
 whichRowToAdjust = 0
 
-localPlotSize = 0
+localPlotDomain = 0
 
 flagMouseDown = False
 
@@ -62,6 +62,7 @@ arrowOutput = []
 
 global bg1
 global bg_blank
+
 
 class PatchStyle(Enum):
     ARROW = 1
@@ -80,7 +81,7 @@ def get_animation_speed():
 # Set plot axis scaling to zoom in/out
 def set_zoom():
     scaleTmp = GetAxisScale()
-    pltHeight = localPlotSize * scaleTmp
+    pltHeight = localPlotDomain * scaleTmp
     pltWidth = pltHeight * 1.5
     if scaleTmp > 1:
         plt.xlim([-pltWidth * .75, pltWidth * 1.25])
@@ -96,14 +97,13 @@ def set_zoom():
         plt.ylim([-pltHeight, pltHeight])
 
 
-
 def Save_background(canvas):
     global bg1, flagAxisScaleIndex
 
     saveIndex = flagAxisScaleIndex
     bg1 = []
     # Save background bitmaps for each scale
-    for flagAxisScaleIndex in range(0,len(AXIS_SCALES)):
+    for flagAxisScaleIndex in range(0, len(AXIS_SCALES)):
         set_zoom()
         canvas.draw()
         bg1.append(canvas.copy_from_bbox(gv.ax1.bbox))
@@ -128,25 +128,25 @@ def CheckArrows():
         setArrowVisible(gv.localShowArrows)
 
 
-def MakeLine(PLOT_SIZE, INPUT_SCALE, RESOLUTION, LINE_X):
-    V_LINE_HEIGHT = PLOT_SIZE * INPUT_SCALE
+def MakeLine(plot_domain, input_scale, RESOLUTION, LINE_X):
+    V_LINE_HEIGHT = plot_domain * input_scale
     V_LINE_SEGMENTS = int(RESOLUTION * V_LINE_HEIGHT)
 
     # Rainbow colors
     colors = pl.cm.jet(np.linspace(0, 1, V_LINE_SEGMENTS))
 
-    max = LINE_X + 1j * V_LINE_HEIGHT
+    max_x = LINE_X + 1j * V_LINE_HEIGHT
 
     if flagBidirectional:
-        min = LINE_X - 1j * V_LINE_HEIGHT
+        min_x = LINE_X - 1j * V_LINE_HEIGHT
     else:
-        min = LINE_X + 0j
+        min_x = LINE_X + 0j
 
-    lns = np.linspace(min, max, V_LINE_SEGMENTS)
+    lns = np.linspace(min_x, max_x, V_LINE_SEGMENTS)
 
-    gv.line_min = min
-    gv.line_max = max
-    gv.line_length = np.abs(max - min)
+    gv.line_min = min_x
+    gv.line_max = max_x
+    gv.line_length = np.abs(max_x - min_x)
 
     return lns, colors
 
@@ -186,10 +186,10 @@ def multiline(xs, ys, lc=None, color=None, **kwargs):
 
     segments = np.zeros((sz, 2, 2))
     # Each line segment has start and end point. End of each segment is equivalent to start of next
-    segments[:,0,0] = xs[0:sz]
-    segments[:,0,1] = ys[0:sz]
-    segments[:,1,0] = xs[1:sz+1]
-    segments[:,1,1] = ys[1:sz+1]
+    segments[:, 0, 0] = xs[0:sz]
+    segments[:, 0, 1] = ys[0:sz]
+    segments[:, 1, 0] = xs[1:sz+1]
+    segments[:, 1, 1] = ys[1:sz+1]
 
     if lc is None:
         lc = LineCollection(segments, **kwargs)
@@ -240,26 +240,26 @@ def on_mouse_release(event):
 def on_mouse_move(event):
     if event.inaxes != gv.ax1:
         return
-    global flagMouseDown, flagRecalc, flagX, flagY, flagChangeMatrix
+    global flagMouseDown, flagRecalculate, flagX, flagY, flagChangeMatrix
     if flagMouseDown:
         flagX = event.xdata
         flagY = event.ydata
         flagChangeMatrix = True
 
 
-def do_1_vs_2(event=None):
-    global flagBidirectional, flagRecalc
+def do_1_vs_2(_event=None):
+    global flagBidirectional, flagRecalculate
     flagBidirectional = not flagBidirectional  # Toggle between 1 and 2 rows
-    flagRecalc = True
+    flagRecalculate = True
 
 
-def do_quit(event=None):
-    global quitflag
-    quitflag = True
+def do_quit(_event=None):
+    global quit_flag
+    quit_flag = True
 
 
 # Pause and unpause animation
-def do_pause_unpause_animate(event=None):
+def do_pause_unpause_animate(_event=None):
     global flagAnimateSpeedIndex, flagSavedAnimateSpeedIndex
 
     if flagAnimateSpeedIndex == 0:
@@ -269,7 +269,7 @@ def do_pause_unpause_animate(event=None):
         flagAnimateSpeedIndex = 0
 
 
-def get_next_speed(s, inc = 1):
+def get_next_speed(s, inc=1):
     s = s + inc
     if s >= len(ANIMATE_SPEEDS):
         s = len(ANIMATE_SPEEDS) - 1
@@ -278,7 +278,7 @@ def get_next_speed(s, inc = 1):
     return s
 
 
-def do_speed_up(event=None):
+def do_speed_up(_event=None):
     global flagAnimateSpeedIndex, flagSavedAnimateSpeedIndex
 
     if flagAnimateSpeedIndex == 0:
@@ -287,7 +287,7 @@ def do_speed_up(event=None):
         flagAnimateSpeedIndex = get_next_speed(flagAnimateSpeedIndex)
 
 
-def do_slow_down(event=None):
+def do_slow_down(_event=None):
     global flagAnimateSpeedIndex, flagSavedAnimateSpeedIndex
 
     if flagAnimateSpeedIndex == 0:
@@ -296,27 +296,27 @@ def do_slow_down(event=None):
         flagAnimateSpeedIndex = get_next_speed(flagAnimateSpeedIndex, -1)
 
 
-def do_reset_animation(event=None):
-    global flagRestartAnimation, flagRecalc, flagChangeMatrix
+def do_reset_animation(_event=None):
+    global flagRestartAnimation, flagRecalculate, flagChangeMatrix
     flagRestartAnimation = True
     flagChangeMatrix = True
 
 
-def do_expand_input(event=None):
-    global flagRecalc, flagInputRangeIndex, flagRedrawAxes
-    flagRecalc = True
+def do_expand_input(_event=None):
+    global flagRecalculate, flagInputRangeIndex, flagRedrawAxes
+    flagRecalculate = True
     flagInputRangeIndex = flagInputRangeIndex + 1
     if flagInputRangeIndex >= len(INPUT_RANGES):
         flagInputRangeIndex = 0
     flagRedrawAxes = True
 
 
-def do_toggle_arrows(event=None):
-    global flagRecalc, flagShowArrows
+def do_toggle_arrows(_event=None):
+    global flagRecalculate, flagShowArrows
     flagShowArrows = not flagShowArrows
 
 
-def do_zoom_out(event=None):
+def do_zoom_out(_event=None):
     global flagRedrawAxes, flagAxisScaleIndex, AXIS_SCALES
     flagAxisScaleIndex = flagAxisScaleIndex + 1
     if flagAxisScaleIndex >= len(AXIS_SCALES):
@@ -324,12 +324,12 @@ def do_zoom_out(event=None):
     flagRedrawAxes = True
 
 
-def do_toggle_side_dots(event=None):
+def do_toggle_side_dots(_event=None):
     global flagSideDots
     flagSideDots = not flagSideDots
 
 
-def do_toggle_center(event=None):
+def do_toggle_center(_event=None):
     global flagCenterAtTarget, flagRedrawAxes
     flagCenterAtTarget = not flagCenterAtTarget
     flagRedrawAxes = True
@@ -373,29 +373,29 @@ def fmt_complex(r):
 
 
 class GraphicsObjects:
-    def __init__(self, PLOT_SIZE, showbuttons = True):
+    def __init__(self, plot_domain, show_buttons=True):
         global bg_blank
 
         print("Available backends:")
         print(mpl.rcsetup.all_backends)
         mpl.use('TkAgg')   # Qt5Agg might also be available, but it is MUCH slower. Force TkAgg, which plots much faster
         self.backend = mpl.get_backend()
-        print("Matplotlib backend is: " + self.backend) # Returns Qt5Agg after installing Qt5 ... if you don't have Qt5, I think it returns TkAgg something
+        print("Matplotlib backend is: " + self.backend)  # Returns Qt5Agg after installing Qt5, otherwise TkAgg
 
         # Create figure
-        fig = plt.figure() #figsize=(MAIN_WINDOW_SIZE, MAIN_WINDOW_SIZE))
+        fig = plt.figure()  # fig_size=(MAIN_WINDOW_SIZE, MAIN_WINDOW_SIZE))
 
         window = plt.get_current_fig_manager().window
         dpi = fig.dpi
 
         if self.backend == "Qt5Agg":
-            # Need a hack to get screen size. Temporarily make a full-screen window, get its size, then later set "real" size
+            # Hack to get screen size. Make full-screen temporary window, get size, then later set "real" size
             window.showMaximized()  # Make window fullscreen
             plt.pause(.001)  # Draw items to screen so we can get size
             screen_x, screen_y = fig.get_size_inches() * fig.dpi  # size in pixels
         else:
             # window.state('zoomed')  # Make window fullscreen, for TkAgg
-            screen_x, screen_y = window.wm_maxsize() # Get full scren monitor coordinates for TkAgg. Doesn't work under Qt5Agg
+            screen_x, screen_y = window.wm_maxsize()  # Get full screen coordinates for TkAgg. Doesn't work with Qt5Agg
 
         screen_y = screen_y - 50  # Subtract a small amount or else the toolbar at bottom will mess things up.
 
@@ -421,25 +421,24 @@ class GraphicsObjects:
         canvas.draw()
         bg_blank = canvas.copy_from_bbox(self.ax.bbox)
 
-        self.Add_axes(PLOT_SIZE)
+        self.Add_axes(plot_domain)
 
         self.textObj = TextObjects(self.canvas, self.fig)
 
-        if showbuttons:
+        if show_buttons:
             self.make_buttons()
 
         # Need this or else current axis will be the last button drawn, instead of main plot
         plt.sca(self.ax)
 
-
     # Create initial graphics, then save backgrounds
-    def Add_axes(self, PLOT_SIZE):
-        global bg1, localPlotSize
+    def Add_axes(self, plot_domain):
+        global bg1, localPlotDomain
 
         plt.sca(self.ax)
         plt.show(block=False)
 
-        localPlotSize = PLOT_SIZE
+        localPlotDomain = plot_domain
         set_zoom()  # Need to do this after sca, or else it won't take effect
 
         self.ax.axhline(y=0, color='gray')
@@ -447,7 +446,6 @@ class GraphicsObjects:
 
         # Make smaller margins
         #    gv.ax1.margins(x=0.01) # This doesn't work. Use subplots_adjust() instead
-
 
     def make_buttons(self):
 
@@ -494,7 +492,7 @@ class GraphicsObjects:
         th2b = rm.Riemann(gv.th1)
         if flagAxisScaleIndex > 0:
             # Make lighter colors when scaling is largest
-            colors2 = [1, 1, 1, 1] - ([1, 1, 1, 1] - gv.linecolors) / 4
+            colors2 = [1.0, 1.0, 1.0, 1.0] - ([1.0, 1.0, 1.0, 1.0] - gv.linecolors) / 4
             line2 = multiline(np.real(th2b), np.imag(th2b), color=colors2, linewidths=0.5)
         else:
             line2 = multiline(np.real(th2b), np.imag(th2b), color=gv.linecolors, linewidths=0.5)

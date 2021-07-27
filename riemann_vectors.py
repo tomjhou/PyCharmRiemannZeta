@@ -1,26 +1,33 @@
 #
 # Calculates Riemann function for values along vertical line in complex plane. Animates result in complex number plane.
 #
-# Calculation uses Euler's transformation to evaluate Dirichlet eta function, then multiples by 1/(1-2^(1-s)) to get Riemann zeta.
-# This converges much faster. Calculation is further sped up by precomputing the weighted binomial coefficient sum used in Euler transform.
+# Calculation uses Euler's transformation to evaluate Dirichlet eta function, then multiples by 1/(1-2^(1-s))
+# to get Riemann zeta. This converges much faster. Calculation is further sped up by precomputing the weighted
+# binomial coefficient sum used in Euler transform.
 #
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.pylab as pl
 import numpy as np
-from enum import Enum
 import time
-from matplotlib.backend_bases import cursors
-import matplotlib.backends.backend_tkagg as tkagg
+
+# My files
+import riemann_graphics as mg
+import riemann_math as rm
+import global_vars as gv
+import matplotlib.lines as mlines
 
 # Change the default cursor to any valid TK cursor
 # To hide it, you'd use the string "none" (or possibly "no" on windows)
 old_cursor = []
-def wait_cursor(v = True):
+# If true, generates a nice smooth demo for background screensaver. Very computationally expensive
+DEMO_MODE = False
+rm.RIEMANN_ITER_LIMIT = 150  # Use higher value to get more precision
+
+
+def wait_cursor(v=True):
     global old_cursor
     if v:
         old_cursor = gObjects.canvas.toolbar._lastCursor
@@ -31,15 +38,6 @@ def wait_cursor(v = True):
 
 #        tkagg.cursord[cursors.POINTER] = 'arrow'
 
-
-# My files
-import RiemannGraphics as mg
-import RiemannMath as rm
-import global_vars as gv
-import matplotlib.lines as mlines
-
-# If true, generates a nice smooth demo for background screensaver. Very computationally expensive
-DEMO_MODE = False
 
 if DEMO_MODE:
     # Generate demo that we can use to make background screensaver
@@ -79,6 +77,8 @@ gv.ax1 = gObjects.ax
 canvas = gObjects.canvas
 
 LINE_X = mg.flagX
+
+
 def MakeLine():
     gv.th1, gv.linecolors = mg.MakeLine(PLOT_SIZE, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
     th1_scaled = [x / INPUT_SCALE for x in gv.th1]
@@ -87,14 +87,19 @@ def MakeLine():
 
     return th1_scaled, line1
 
-th1b, line1 = MakeLine()
-plt.pause(.001) # Draws items to screen
 
-tmp, numArrowsPlusOne = rm.Riemann(2, True) # Second argument returns required array size
+th1b, line1 = MakeLine()
+plt.pause(.001)  # Draws items to screen
+
+tmp, numArrowsPlusOne = rm.Riemann(2, True)  # Second argument returns required array size
 
 # Create red "input" arrow
 if InputStyle == mg.PatchStyle.ARROW or InputStyle == mg.PatchStyle.ARROW_CIRCLE:
-    inputArrowPatch = [] #mpatches.Arrow(0, 0, 0, 0, color=mg.INPUT_VECTOR_COLOR, width=INPUT_PATCH_SCALE)
+    inputArrowPatch = []  # mpatches.Arrow(0, 0, 0, 0, color=mg.INPUT_VECTOR_COLOR, width=INPUT_PATCH_SCALE)
+
+inputCirclePatch: mpl.patches.Circle
+inputCirclePatch2: mpl.patches.Circle
+inputCirclePatch3: mpl.patches.Circle
 
 # Create optional side patches
 if InputStyle == mg.PatchStyle.CIRCLE or InputStyle == mg.PatchStyle.ARROW_CIRCLE:
@@ -173,12 +178,13 @@ wait_cursor(False)
 plt.pause(0.001)
 t1 = time.time()
 max_speed = 3
-while mg.quitflag == 0:
+while mg.quit_flag == 0:
 
     if DEMO_MODE:
         DesiredStepsPerSecond_actual = DesiredStepsPerSecond_base / np.abs(rm.EtaToZetaScale(inputVal))
     else:
-        DesiredStepsPerSecond_actual = DesiredStepsPerSecond_base * mg.get_animation_speed() / np.abs(rm.EtaToZetaScale(inputVal))
+        DesiredStepsPerSecond_actual = \
+            DesiredStepsPerSecond_base * mg.get_animation_speed() / np.abs(rm.EtaToZetaScale(inputVal))
 
     inputVal = mg.GetPoint(currentPoint)
     outputVal = rm.Riemann(inputVal)
@@ -215,17 +221,18 @@ while mg.quitflag == 0:
     if mg.flagCenterAtTarget:
         inputCirclePatch.set_radius(0)
         outputCirclePatch.set_radius(0)
-        if inputArrowPatch != []:
+        if inputArrowPatch:
             inputArrowPatch.remove()
             inputArrowPatch = []
     else:
-        if (InputStyle == mg.PatchStyle.ARROW or InputStyle == mg.PatchStyle.ARROW_CIRCLE):
+        if InputStyle == mg.PatchStyle.ARROW or InputStyle == mg.PatchStyle.ARROW_CIRCLE:
             # Arrow patch seems to have no way to update, so just remove and replace
-            if inputArrowPatch != []:
+            if inputArrowPatch:
                 inputArrowPatch.remove()
-            inputArrowPatch = mpatches.Arrow(0, 0, inputVal.real / INPUT_SCALE, inputVal.imag / INPUT_SCALE, color=mg.INPUT_VECTOR_COLOR, width=INPUT_ARROW_SCALE * mg.GetAxisScale())
+            inputArrowPatch = mpatches.Arrow(0, 0, inputVal.real / INPUT_SCALE, inputVal.imag / INPUT_SCALE,
+                                             color=mg.INPUT_VECTOR_COLOR, width=INPUT_ARROW_SCALE * mg.GetAxisScale())
             gv.ax1.add_patch(inputArrowPatch)
-        if (InputStyle == mg.PatchStyle.CIRCLE or InputStyle == mg.PatchStyle.ARROW_CIRCLE):
+        if (InputStyle == mg.PatchStyle.CIRCLE) or (InputStyle == mg.PatchStyle.ARROW_CIRCLE):
             inputCirclePatch.center = inputVal.real / INPUT_SCALE, inputVal.imag / INPUT_SCALE
 
             tmpColorIndex = int(currentPoint * len(gv.linecolors) / gv.line_length)
@@ -260,7 +267,7 @@ while mg.quitflag == 0:
 #    for x in range(0,currentPoint):
 #        gv.ax1.draw_artist(lineList[x])
     if gv.localShowArrows:
-        for i in range(0,localNumArrows):
+        for i in range(0, localNumArrows):
             gv.ax1.draw_artist(mg.arrowOutput[i])
     for p in gv.ax1.patches:
         # Draw input/output circles last, so they will be on top
@@ -277,7 +284,7 @@ while mg.quitflag == 0:
     # This gives better performance after initial draw
     canvas.flush_events()
 
-    while not mg.quitflag:
+    while not mg.quit_flag:
 
         mg.CheckArrows()
         if gv.localShowArrows != mg.flagShowArrows:
@@ -303,7 +310,7 @@ while mg.quitflag == 0:
                 currentPoint = 0
                 mg.flagRestartAnimation = False
 
-            elif mg.flagX is not None and mg.flagY is not None:  # Because x, y won't be valid if mouse went out of bounds
+            elif mg.flagX is not None and mg.flagY is not None:  # Because x, y won't be valid if mouse out of bounds
 
                 if mg.whichRowToAdjust == 0:
                     # Left mouse moves single input point
@@ -314,10 +321,10 @@ while mg.quitflag == 0:
                     LINE_X = mg.flagX * INPUT_SCALE
                     inputVal = complex(LINE_X, mg.flagY * INPUT_SCALE)
 
-                    mg.flagRecalc = True
+                    mg.flagRecalculate = True
 
-        if mg.flagRecalc:
-            mg.flagRecalc = False
+        if mg.flagRecalculate:
+            mg.flagRecalculate = False
             INPUT_SCALE = mg.INPUT_RANGES[mg.flagInputRangeIndex]
 
             mg.Restore_background(canvas)
@@ -339,7 +346,7 @@ while mg.quitflag == 0:
 
         canvas.flush_events()
 
-    if mg.quitflag:
+    if mg.quit_flag:
         break
 
     if localAnimateSpeed > 0:

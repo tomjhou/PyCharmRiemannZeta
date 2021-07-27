@@ -15,8 +15,8 @@ import numpy as np
 from enum import Enum
 
 # My files
-import RiemannGraphics as mg
-import RiemannMath as rm
+import riemann_graphics as mg
+import riemann_math as rm
 import global_vars as gv
 import matplotlib.lines as mlines
 
@@ -25,7 +25,7 @@ INPUT_SCALE_BASE = 30       # Size of initial line. Will be scaled to fit on plo
 INPUT_SCALE_EXPANDED = 100  # Expanded input range
 RIEMANN_ITER_LIMIT = 275
 INPUT_LINE_RESOLUTION = 40     # Number of points per unit on input line
-PLOT_SIZE = np.pi / 2
+PLOT_DOMAIN = np.pi / 2
 OUTPUT_ARROW_SCALE = 0.03
 INPUT_ARROW_SCALE = 0.03
 CIRCLE_PATCH_SCALE = 0.01
@@ -50,25 +50,25 @@ ANIMATION_RANGE_BASE = 0.5
 ANIMATION_STEP_BASE = 0.01
 
 # Create static objects, and save background bitmaps so we don't have to redraw them over and over.
-mg.Add_axes(canvas, PLOT_SIZE)
+mg.Add_axes(canvas, PLOT_DOMAIN)
 
 ANIMATION_RANGE = ANIMATION_RANGE_BASE * mg.GetAxisScale()
 ANIMATION_STEP = ANIMATION_STEP_BASE * mg.GetAxisScale()
 
 LINE_X = 0.5 - ANIMATION_RANGE / 2
-th1, linecolors = mg.MakeLine(PLOT_SIZE, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
+th1, line_colors = mg.MakeLine(PLOT_DOMAIN, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
 tmp, numArrowsPlusOne = rm.Riemann(2, True) # Last argument returns required array size
 # Create new outArray that will be used to generate arrows. Has one more element than arrow
 rm.outArray = np.zeros(numArrowsPlusOne, dtype=complex)
 
 # Create input rainbow line
-line1 = mg.multiline(np.real(th1), np.imag(th1), color=linecolors, linewidths = 0.5)
+line1 = mg.multiline(np.real(th1), np.imag(th1), color=line_colors, linewidths=0.5)
 gv.ax1.add_collection(line1)
 
 # Create output rainbow line
 th2 = rm.Riemann(th1)
 th2b = [x * OUTPUT_SCALE for x in th2]
-line2 = mg.multiline(np.real(th2b), np.imag(th2b), color=linecolors, linewidths = 0.5)
+line2 = mg.multiline(np.real(th2b), np.imag(th2b), color=line_colors, linewidths=0.5)
 pltLineCollection = gv.ax1.add_collection(line2)
 
 canvas.flush_events()
@@ -80,7 +80,7 @@ localAnimate = mg.flagAnimate  # Need local copy of this flag so we can detect w
 # Update text
 gObjects.textObj.update_input_real(LINE_X)
 
-while mg.quitflag == 0:
+while mg.quit_flag == 0:
 
     # Render to screen
     if not mg.flagAnimate:
@@ -89,7 +89,7 @@ while mg.quitflag == 0:
     # This gives better performance after initial draw
     canvas.flush_events()
 
-    while not mg.quitflag:
+    while not mg.quit_flag:
 
         if localAnimate != mg.flagAnimate:
             # Animation has just changed.
@@ -106,18 +106,18 @@ while mg.quitflag == 0:
             LINE_X = mg.flagX
 
         if localAnimate or mg.flagChangeMatrix:
-            mg.flagRecalc = False
+            mg.flagRecalculate = False
             LINE_X = LINE_X + ANIMATION_STEP
             if LINE_X > 0.5 + ANIMATION_RANGE / 2:
                 LINE_X = 0.5 - ANIMATION_RANGE / 2
             INPUT_SCALE = INPUT_SCALE_EXPANDED if mg.flagExpandInput else INPUT_SCALE_BASE
 
-            th1, linecolors = mg.MakeLine(PLOT_SIZE, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
+            th1, line_colors = mg.MakeLine(PLOT_DOMAIN, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
             th2 = rm.Riemann(th1)
             th2b = [x * OUTPUT_SCALE for x in th2]
 
-            mg.multiline(np.real(th1), np.imag(th1), line1, color=linecolors)
-            mg.multiline(np.real(th2b), np.imag(th2b), line2, color=linecolors)
+            mg.multiline(np.real(th1), np.imag(th1), line1, color=line_colors)
+            mg.multiline(np.real(th2b), np.imag(th2b), line2, color=line_colors)
             # Update text
             gObjects.textObj.update_input_real(LINE_X)
             break
@@ -125,7 +125,7 @@ while mg.quitflag == 0:
         canvas.flush_events()
         plt.pause(0.01)
 
-    if mg.quitflag:
+    if mg.quit_flag:
         break
 
     if mg.flagAnimate:

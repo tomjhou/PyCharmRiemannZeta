@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 # from math import comb # No longer needed because we use faster Pascal method to calculate n_choose_k
 from scipy.special import gamma
@@ -5,7 +7,7 @@ from scipy.special import gamma
 outArray = []
 
 # This should be set by caller, to handle computational progress
-computation_progress_callback = None
+computation_progress_callback: typing.Callable = None
 
 # This can be set by caller, to halt ongoing computation (only works with Riemann)
 quit_computation_flag = False
@@ -13,6 +15,7 @@ quit_computation_flag = False
 RIEMANN_ITER_LIMIT = 40  # Default. Can be overridden
 NK2_array = []
 NK1_array = []
+
 
 # Precompute table of coefficients for lookup. This reduces Riemann computation time from O(n^2) to O(n)
 def precompute_coeffs():
@@ -49,6 +52,9 @@ def EtaToZetaScale(v):
 #
 # If second argument is true, then also return array size of intermediate sum calculation (used to draw arrows)
 #
+# Note that s can be a 1D or 2D array, in which it will return output in the same
+# format as the input
+
 # Approximate accuracy for real s is (very) roughly proportional to magnitude of final summation
 # term, which is about 1/(2^ITER * ITER^s). Hence, number of digits of precision is roughly
 # log_10(2^ITER * ITER^s) = .301 * ITER + s * log_10(ITER). For example:
@@ -62,24 +68,32 @@ def EtaToZetaScale(v):
 # Note that convergence is very poor for Re(s) large and negative. So we use the functional equation
 # for Re(s) < 0.
 #
-def Riemann(s, get_array_size=False, do_eta=False):
-    global callCount
+def Riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
 
     if np.size(s) > 1:
-        return [0.0 if quit_computation_flag else Riemann(x, do_eta=do_eta) for x in s]
+        # Note that this can produce a "ragged" list if interrupted in the middle, with
+        # some rows being full length, and others having just a single zero.
+        return [0.0 if quit_computation_flag else Riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
+    #    return [Riemann(x, do_eta=do_eta) for x in s]
+
+#    if quit_computation_flag:
+        # Checking the quitflag here forces output to have a full array of zeros
+#        return 0
 
     if s == 1.0:
-        # Calculation blows up at 1.0, so return nan
+        # Calculation blows up at 1.0, so return 0. We could return nan, but that causes warnings later
         computation_progress_callback()
-        return np.nan
+        if use_zero_for_nan:
+            return 0
+        else:
+            return np.nan
 
     if np.real(s) < 0:
+        # Use functional equation
         if do_eta:
-            # Use functional equation. Don't call printstatus yet
             return -s * Riemann(1 - s, do_eta=do_eta) * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) * (
                         1 - 2 ** (s - 1)) / (1 - 2 ** s)
         else:
-            # Use functional equation. Don't call printstatus yet
             return Riemann(1 - s, do_eta=do_eta) * gamma(1 - s) * np.sin(s * np.pi / 2) * (np.pi ** (s - 1)) * (2 ** s)
 
     cum_sum = 0 + 0j
@@ -125,7 +139,8 @@ def Riemann(s, get_array_size=False, do_eta=False):
         if store_intermediates or get_array_size:
             partial_sum_index = partial_sum_index + 1
 
-    computation_progress_callback()
+    if computation_progress_callback is not None:
+        computation_progress_callback()
 
     if get_array_size:
         return cum_sum, partial_sum_index
@@ -137,8 +152,17 @@ def Riemann(s, get_array_size=False, do_eta=False):
 # When multiplied by gamma(s/2) * pi ^(-s/2), the result has 180-deg rotational symmetry around s = 0.5 + 0j
 #
 def RiemannSymmetric(s):
-    return Riemann(s) * gamma(s / 2) * (np.pi ** (-s / 2))
+    r = Riemann(s)
+    if quit_computation_flag:
+        # If we were interrupted, we will have a "ragged" list, in which some elements are a single "0",
+        # while others are a full length. Don't try
+        # to multiple this by gamma stuff, or else will get an error that we can't multiply a sequence
+        # by a single number
+        return r
+
+    return r * gamma(s / 2) * (np.pi ** (-s / 2))
 #    return (np.pi ** (-s/2))
+
 
 def RiemannGamma(s):
     return Riemann(s) * gamma(s/2)
