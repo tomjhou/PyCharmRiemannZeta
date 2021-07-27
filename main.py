@@ -230,12 +230,14 @@ def do_heatmap():
     # Note that the following will close a temporary figure, causing tk.mainloop to quit.
     rh.fig_mgr = mfm.MplFigureManager()
 
+    # User lower value to speed up calculations
+    # Must set this value before creating TopLevel window, as that will
+    # use it to set slider/scale
+    rh.rm.RIEMANN_ITER_LIMIT = 30
+
     win = tk.Toplevel(root)
     win_heatmap = WinHeatMap(win)
     win_heatmap.set_initial_values()
-
-    # User lower value to speed up calculations
-    rh.rm.RIEMANN_ITER_LIMIT = 30
 
     # Make this topmost. This is needed if there is text entry beforehand, which sends focus away from Tkinter objects
     # root.lift()
