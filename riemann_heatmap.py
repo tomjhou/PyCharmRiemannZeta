@@ -36,7 +36,7 @@ Settings.oversample = False
 Settings.REUSE_FIGURE = False
 Settings.phase_only = False
 Settings.top_only = True
-Settings.last_selection = 0  # Save last graph selection so we can recalculate
+Settings.last_selection = -1  # Save last graph selection so we can recalculate
 Settings.auto_recalculate = False
 Settings.oversample = False
 Settings.parameterA = 1.0        # Parameter for formula
@@ -229,6 +229,10 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     global Settings, mesh_points, callCount
 
     if not hasattr(Settings, 'last_figure'):
+        # Last figure never created. May have just launched program.
+        Settings.REUSE_FIGURE = False
+    elif not plt.fignum_exists(Settings.last_figure.number):
+        # Last figure no longer exists. May have been closed by user.
         Settings.REUSE_FIGURE = False
 
     if Settings.REUSE_FIGURE:
@@ -280,8 +284,8 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
             # Show figure
             fig_mgr.fig_plot.show()
 
-        if update_progress_callback is not None:
-            update_progress_callback(100)
+#        if update_progress_callback is not None:
+#            update_progress_callback(100)
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',

@@ -74,6 +74,9 @@ def do_heatmap():
     def do_recalculate():
         # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
         wid = rh.Settings.last_selection
+        if wid < 0:
+            # No previous selection exists, e.g. we have just launched program
+            return
         rh.Settings.REUSE_FIGURE = True
         rh.make_plot(wid)
 
@@ -265,5 +268,6 @@ ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5
 # Because matplotlib.close() will terminate this loop, we wrap it in another loop
 while not quit_flag:
     tk.mainloop()
+    print("Mainloop exited. Reentering now.")
 
 print("Finished")
