@@ -139,3 +139,6 @@ def Riemann(s, get_array_size=False, do_eta=False):
 def RiemannSymmetric(s):
     return Riemann(s) * gamma(s / 2) * (np.pi ** (-s / 2))
 #    return (np.pi ** (-s/2))
+
+def RiemannGamma(s):
+    return Riemann(s) * gamma(s/2)

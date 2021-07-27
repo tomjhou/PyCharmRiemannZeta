@@ -89,11 +89,13 @@ plot_list = {
     18: "Gamma, square20",
     10: "Sine",
     11: "Cosine",
-    12: "Exponential",
-    13: "Power (spiral)",
+    12: "Exponential c^z",
+    13: "Power z^c",
+    14: "Exp: pi^(-z/2)",
     15: "Riemann partial sum",
-    16: "1 - 2 ^ (1-s)",
-    17: "Dirichlet eta"
+    16: "1 - 2 ^ (1-z)",
+    17: "Dirichlet eta",
+    20: "Riemann * Gamma"
 }
 
 checkbox_list = ["Autorecalculate",
@@ -463,6 +465,13 @@ def make_plot(_selection):
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='$z$^(3-8j)')
+    elif _selection == 14:
+        #  pi ^ (z/2), one of the two functions multiplied by Riemann to get symmetric Riemann
+        mesh_size = 40
+        plot_domain2(lambda z: np.power(np.pi, -z/2),
+                     re=[x_center - mesh_size, x_center + mesh_size],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+                     title='3^$z$')
     elif _selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
@@ -501,6 +510,12 @@ def make_plot(_selection):
                      re=[x_center - 1, x_center + 2],
                      im=[y_min, y_max],
                      title='Eta($s$)')
+    elif _selection == 20:
+        mesh_size = 60
+        plot_domain2(lambda z: rm.RiemannGamma(z),
+                     re=[x_center - mesh_size, x_center + mesh_size],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+                     title='Riemann(s) * Gamma($s$)')
 
     rm.quit_computation_flag = False
 
