@@ -29,23 +29,40 @@ def do_heatmap():
         # This quits mainApp, but only after control returns to mainloop
         win.quit()
 
+    def do_density_slider_button_release(_event):
+        val = win_heatmap.slider1.get()
+        do_density_slider(val)
+        if rh.Settings.auto_recalculate:
+            do_recalculate()
+
     def do_density_slider(val):
+        # Note: val is a string when called during mouse move, and a float when
+        # called during button release
         rh.Settings.MESH_DENSITY = float(val)
         res = float(val) * rh.fig_mgr.screen_y_pixels
         st = str(int(res))
         win_heatmap.label1['text'] = "Resolution = " + st + " x " + st
+
+    def do_sliderA_button_release(_event):
+        do_parameterA(win_heatmap.sliderA.get())
         if rh.Settings.auto_recalculate:
             do_recalculate()
 
     def do_parameterA(val):
         rh.Settings.parameterA = float(val)
-        win_heatmap.labelA['text'] = "Parameter A = " + val
+        win_heatmap.labelA['text'] = "Parameter A = " + str(val)
+
+    def do_sliderB_button_release(_event):
+        do_parameterB(win_heatmap.sliderB.get())
         if rh.Settings.auto_recalculate:
             do_recalculate()
 
     def do_parameterB(val):
         rh.Settings.parameterB = float(val)
-        win_heatmap.labelB['text'] = "Parameter B = " + val
+        win_heatmap.labelB['text'] = "Parameter B = " + str(val)
+
+    def do_slider_iter_button_release(_event):
+        do_iter_slider(win_heatmap.slider_iter.get())
         if rh.Settings.auto_recalculate:
             do_recalculate()
 
@@ -53,10 +70,9 @@ def do_heatmap():
         rh.rm.RIEMANN_ITER_LIMIT = int(float(val))
         win_heatmap.label2['text'] = "Riemann iter = " + str(rh.rm.RIEMANN_ITER_LIMIT)
         rh.rm.precompute_coeffs()
-        if rh.Settings.auto_recalculate:
-            do_recalculate()
 
     def do_recalculate():
+        # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
         wid = rh.Settings.last_selection
         rh.Settings.REUSE_FIGURE = True
         rh.make_plot(wid)
@@ -72,12 +88,15 @@ def do_heatmap():
     #        mainApp.update_idletasks()
 
     def do_phase():
+        # Handle user checking-unchecking this box
         rh.Settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
 
     def do_oversample():
+        # Handle user checking-unchecking this box
         rh.Settings.oversample = win_heatmap.var_oversample.get()  # not rh.Settings.oversample
 
     def do_auto_recalculate():
+        # Handle user checking-unchecking this box
         rh.Settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
         if rh.Settings.auto_recalculate:
             # Set slider to min value when auto recalc is turned on.
@@ -103,18 +122,21 @@ def do_heatmap():
             self.label1.pack()
 
             self.slider1 = ttk.Scale(frame_top_controls, from_=0.05, to=1, command=do_density_slider)
+            self.slider1.bind("<ButtonRelease-1>", do_density_slider_button_release)
             self.slider1.pack(fill=tk.X)
 
             self.labelA = ttk.Label(frame_top_controls, text="Parameter A")
             self.labelA.pack()
 
             self.sliderA = ttk.Scale(frame_top_controls, from_=-10, to=10, command=do_parameterA)
+            self.sliderA.bind("<ButtonRelease-1>", do_sliderA_button_release)
             self.sliderA.pack(fill=tk.X)
 
             self.labelB = ttk.Label(frame_top_controls, text="Parameter B")
             self.labelB.pack()
 
             self.sliderB = ttk.Scale(frame_top_controls, from_=-10, to=10, command=do_parameterB)
+            self.sliderB.bind("<ButtonRelease-1>", do_sliderB_button_release)
             self.sliderB.pack(fill=tk.X)
 
             self.progress = ttk.Progressbar(frame_top_controls, orient="horizontal", length=100, mode="determinate")
@@ -123,8 +145,9 @@ def do_heatmap():
             self.label2 = ttk.Label(frame_top_controls, text="Riemann iters =")
             self.label2.pack()
 
-            self.slider2 = ttk.Scale(frame_top_controls, from_=20, to=100, command=do_iter_slider)
-            self.slider2.pack(fill=tk.X)
+            self.slider_iter = ttk.Scale(frame_top_controls, from_=20, to=100, command=do_iter_slider)
+            self.slider_iter.bind("<ButtonRelease-1>", do_slider_iter_button_release)
+            self.slider_iter.pack(fill=tk.X)
 
             #
             # Row of buttons
@@ -196,7 +219,7 @@ def do_heatmap():
             # These must go outside constructor, as they will trigger callback
             # which needs access to mainApp object
             self.slider1.set(rh.Settings.MESH_DENSITY)
-            self.slider2.set(rh.rm.RIEMANN_ITER_LIMIT)
+            self.slider_iter.set(rh.rm.RIEMANN_ITER_LIMIT)
             self.var_phase.set(0)
             self.var_oversample.set(0)
             self.var_auto_recalculate.set(0)

@@ -89,8 +89,8 @@ plot_list = {
     7: "Gamma, strip",
     8: "Gamma, square4",
     18: "Gamma, square20",
-    10: "Sine",
-    11: "Cosine",
+    10: "sin(az) + b",
+    11: "cos(az) + b",
     12: "Exponential a^z + b",
     13: "Power z^(a+bi)",
     14: "Exp: pi^(-z/2)",
@@ -454,17 +454,17 @@ def make_plot(_selection):
     elif _selection == 10:
         # sine function, square
         mesh_size = 10
-        plot_domain2(lambda z: np.sin(z / 2),
+        plot_domain2(lambda z: np.sin(a * z) + b,
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='sin($z$)')
+                     title='sin(a*$z$)+b')
     elif _selection == 11:
         # cosine function, square
         mesh_size = 20
-        plot_domain2(lambda z: np.cos(z / 2),
+        plot_domain2(lambda z: np.cos(a * z) + b,
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
-                     title='cos($z$)')
+                     title='cos(a*$z$)+b')
     elif _selection == 12:
         # complex exponential function, square
         mesh_size = 40
