@@ -100,8 +100,9 @@ def do_heatmap():
         rh.Settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
         if rh.Settings.auto_recalculate:
             # Set slider to min value when auto recalc is turned on.
-            # This will now trigger an initial recalc
-            win_heatmap.slider1.set(win_heatmap.slider1.cget('from'))
+            # win_heatmap.slider1.set(win_heatmap.slider1.cget('from'))
+            # Now trigger one initial recalc
+            do_recalculate()
 
     class WinHeatMap:
         def __init__(self, win):
