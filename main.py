@@ -3,7 +3,6 @@ from tkinter import ttk
 import matplotlib as mpl
 import mpl_figure_manager as mfm
 
-
 quit_flag = False
 mpl.use('TKAgg')
 
@@ -13,7 +12,6 @@ def do_vectors():
 
 
 def do_heatmap():
-
     import riemann_heatmap as rh
     from functools import partial
 
@@ -36,11 +34,27 @@ def do_heatmap():
         res = float(val) * rh.fig_mgr.screen_y_pixels
         st = str(int(res))
         win_heatmap.label1['text'] = "Resolution = " + st + " x " + st
+        if rh.Settings.auto_recalculate:
+            do_recalculate()
+
+    def do_parameterA(val):
+        rh.Settings.parameterA = float(val)
+        win_heatmap.labelA['text'] = "Parameter A = " + val
+        if rh.Settings.auto_recalculate:
+            do_recalculate()
+
+    def do_parameterB(val):
+        rh.Settings.parameterB = float(val)
+        win_heatmap.labelB['text'] = "Parameter B = " + val
+        if rh.Settings.auto_recalculate:
+            do_recalculate()
 
     def do_iter_slider(val):
         rh.rm.RIEMANN_ITER_LIMIT = int(float(val))
         win_heatmap.label2['text'] = "Riemann iter = " + str(rh.rm.RIEMANN_ITER_LIMIT)
         rh.rm.precompute_coeffs()
+        if rh.Settings.auto_recalculate:
+            do_recalculate()
 
     def do_recalculate():
         wid = rh.Settings.last_selection
@@ -50,12 +64,7 @@ def do_heatmap():
     def do_cancel():
         rh.rm.quit_computation_flag = True
 
-    def update_slider(percent, update_only=False):
-
-        if update_only:
-            root.update()
-            return
-
+    def update_slider(percent):
         #        print("  \r" + '{:1.2f}'.format(percent) + "%", end="")
         win_heatmap.progress['value'] = percent
         root.update()
@@ -67,6 +76,9 @@ def do_heatmap():
 
     def do_oversample():
         rh.Settings.oversample = not rh.Settings.oversample
+
+    def do_auto_recalculate():
+        rh.Settings.auto_recalculate = not rh.Settings.auto_recalculate
 
     class WinHeatMap:
         def __init__(self, win):
@@ -86,8 +98,20 @@ def do_heatmap():
             self.label1 = ttk.Label(frame_top_controls, text="Resolution =")
             self.label1.pack()
 
-            self.slider1 = ttk.Scale(frame_top_controls, from_=0.1, to=1, command=do_density_slider)
+            self.slider1 = ttk.Scale(frame_top_controls, from_=0.05, to=1, command=do_density_slider)
             self.slider1.pack(fill=tk.X)
+
+            self.labelA = ttk.Label(frame_top_controls, text="Parameter A")
+            self.labelA.pack()
+
+            self.sliderA = ttk.Scale(frame_top_controls, from_=-10, to=10, command=do_parameterA)
+            self.sliderA.pack(fill=tk.X)
+
+            self.labelB = ttk.Label(frame_top_controls, text="Parameter B")
+            self.labelB.pack()
+
+            self.sliderB = ttk.Scale(frame_top_controls, from_=-10, to=10, command=do_parameterB)
+            self.sliderB.pack(fill=tk.X)
 
             self.progress = ttk.Progressbar(frame_top_controls, orient="horizontal", length=100, mode="determinate")
             self.progress.pack(fill=tk.X)
@@ -128,6 +152,13 @@ def do_heatmap():
                                                        variable=self.var_oversample)
             self.checkbox_oversample.pack(side=tk.LEFT)
 
+            self.var_auto_recalculate = tk.IntVar(win)
+            self.checkbox_auto_recalculate = ttk.Checkbutton(self.frame_checks,
+                                                             text="Auto recalc",
+                                                             command=do_auto_recalculate,
+                                                             variable=self.var_auto_recalculate)
+            self.checkbox_auto_recalculate.pack(side=tk.LEFT)
+
             #
             #  Grid of Buttons and controls for various graph types
             #
@@ -158,13 +189,15 @@ def do_heatmap():
             rh.rm.computation_progress_callback = rh.update_computation_status
 
         def set_initial_values(self):
-
             # These must go outside constructor, as they will trigger callback
             # which needs access to mainApp object
             self.slider1.set(rh.Settings.MESH_DENSITY)
             self.slider2.set(rh.rm.RIEMANN_ITER_LIMIT)
             self.var_phase.set(0)
             self.var_oversample.set(0)
+            self.var_auto_recalculate.set(0)
+            self.sliderA.set(rh.Settings.parameterA)
+            self.sliderB.set(rh.Settings.parameterB)
 
     # Note that the following will close a temporary figure, causing tk.mainloop to quit.
     rh.fig_mgr = mfm.MplFigureManager()

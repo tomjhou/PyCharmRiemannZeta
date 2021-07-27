@@ -37,8 +37,10 @@ Settings.REUSE_FIGURE = False
 Settings.phase_only = False
 Settings.top_only = True
 Settings.last_selection = 0  # Save last graph selection so we can recalculate
-Settings.autorecalculate = False
+Settings.auto_recalculate = False
 Settings.oversample = False
+Settings.parameterA = 1.0        # Parameter for formula
+Settings.parameterB = 0.0
 
 
 def make_fig_plot(_event, _id):
@@ -89,8 +91,8 @@ plot_list = {
     18: "Gamma, square20",
     10: "Sine",
     11: "Cosine",
-    12: "Exponential c^z",
-    13: "Power z^c",
+    12: "Exponential a^z + b",
+    13: "Power z^(a+bi)",
     14: "Exp: pi^(-z/2)",
     15: "Riemann partial sum",
     16: "1 - 2 ^ (1-z)",
@@ -363,6 +365,9 @@ def make_plot(_selection):
     else:
         y_min = -30
 
+    a = Settings.parameterA
+    b = Settings.parameterB
+
     if _selection == 0:
         mesh_size = 10
         plot_domain2(lambda z: z, re=[-mesh_size, mesh_size], im=[-mesh_size, mesh_size], title='$z$')
@@ -463,14 +468,14 @@ def make_plot(_selection):
     elif _selection == 12:
         # complex exponential function, square
         mesh_size = 40
-        plot_domain2(lambda z: np.power(3, z),
+        plot_domain2(lambda z: np.power(a, z) + b,
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='3^$z$')
     elif _selection == 13:
         # complex power function, square
         mesh_size = 40
-        plot_domain2(lambda z: np.power(z, 3 - 8j),
+        plot_domain2(lambda z: np.power(z, a - 1j*b),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='$z$^(3-8j)')
