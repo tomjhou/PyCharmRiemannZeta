@@ -27,31 +27,31 @@ update_progress_callback: typing.Callable[[float], None]  # = None
 points_processed = 0
 
 
-class Settings:
-    pass
+class SettingsClass:
+    def __init__(self):
+        self.SCALE = .98       # Plot size as a function of screen height
+        self.MESH_DENSITY = 0.35  # Set # of mesh points as a function of "standard"
+        self.oversample = False
+        self.REUSE_FIGURE = False
+        self.phase_only = False
+        self.top_only = True
+        self.last_selection = -1  # Save last graph selection so we can recalculate
+        self.auto_recalculate = True
+        self.oversample = False
+        self.parameterA = 1.0        # Parameter for formula
+        self.parameterB = 0.0
 
 
-# Static variables (this class is never instantiated)
-Settings.SCALE = .98       # Plot size as a function of screen height
-Settings.MESH_DENSITY = 0.35  # Set # of mesh points as a function of "standard"
-Settings.oversample = False
-Settings.REUSE_FIGURE = False
-Settings.phase_only = False
-Settings.top_only = True
-Settings.last_selection = -1  # Save last graph selection so we can recalculate
-Settings.auto_recalculate = True
-Settings.oversample = False
-Settings.parameterA = 1.0        # Parameter for formula
-Settings.parameterB = 0.0
+settings = SettingsClass()
 
 
 def make_fig_plot(_event, _id):
     if _id < 0:
         # Negative ID is the recalculate button
-        _id = Settings.last_selection
-        Settings.REUSE_FIGURE = True
+        _id = settings.last_selection
+        settings.REUSE_FIGURE = True
     else:
-        Settings.last_selection = _id
+        settings.last_selection = _id
     make_plot(_id)
     plt.pause(.001)
 
@@ -174,7 +174,7 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
     # w is the  array of values f(z)
     # s is the constant saturation
 
-    global Settings
+    global settings
 
     H = Hcomplex(w)  # Determine hue
     # S = s * np.ones(H.shape)  # Saturation = 1.0 always
@@ -182,7 +182,7 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
     mag = np.absolute(w)  #
     mag = np.where(mag < 1e-323, 1e-323, mag)  # To avoid divide by zero errors, impose a min magnitude
 
-    if Settings.phase_only:
+    if settings.phase_only:
         v = 1
     else:
         elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
@@ -229,36 +229,36 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
 # Creates figure, then calls plot_domain with standard options. When done, calculates
 # points per second calculation speed
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
-    global Settings, mesh_points, points_processed
+    global settings, mesh_points, points_processed
 
-    if not hasattr(Settings, 'last_figure'):
+    if not hasattr(settings, 'last_figure'):
         # Last figure never created. May have just launched program.
-        Settings.REUSE_FIGURE = False
-    elif not plt.fignum_exists(Settings.last_figure.number):
+        settings.REUSE_FIGURE = False
+    elif not plt.fignum_exists(settings.last_figure.number):
         # Last figure no longer exists. May have been closed by user.
-        Settings.REUSE_FIGURE = False
+        settings.REUSE_FIGURE = False
 
     show_axis = True
 
-    if Settings.REUSE_FIGURE:
-        plt.figure(Settings.last_figure.number)
+    if settings.REUSE_FIGURE:
+        plt.figure(settings.last_figure.number)
         # Clear flag so that we only reuse once. If we want to
         # reuse again, caller must set flag again
-        Settings.REUSE_FIGURE = False
+        settings.REUSE_FIGURE = False
     else:
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
-        fig = fig_mgr.make_plot_fig(Settings.SCALE * aspect, Settings.SCALE)
+        fig = fig_mgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
         fig.canvas.mpl_connect('key_press_event', on_keypress)
-        Settings.last_figure = fig
+        settings.last_figure = fig
         fig.canvas.draw()
 
     points_processed = 0
     if update_progress_callback is not None:
         update_progress_callback(0)
 
-    density = fig_mgr.screen_y_pixels / abs(im[1] - im[0]) * Settings.MESH_DENSITY
-    if Settings.oversample:
+    density = fig_mgr.screen_y_pixels / abs(im[1] - im[0]) * settings.MESH_DENSITY
+    if settings.oversample:
         density = density * 4
 
     # Mesh points is calculated here. Prior to calling this, it will be zero.
@@ -268,6 +268,11 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     # This could take several seconds for large plots, and is excruciatingly slow for 4x oversampled
     # plots. On MacOS, we see a "wait" cursor right away, while Windows takes much longer to show wait cursor.
     if mesh_points > 0:
+
+        # Update progress bar first, in case UI freezes while showing large image
+        if update_progress_callback is not None:
+            update_progress_callback(100)
+
         try:
             fig_mgr.canvas_plot.draw()
 #            fig_mgr.canvas_plot.flush_events()   # Doesn't seem to be needed
@@ -284,9 +289,6 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
             # Show figure. Sometimes this crashes even if the fig_plot variable is now correct. Why?
             # Best to do prechecks to avoid getting here.
             fig_mgr.fig_plot.show()
-
-        if update_progress_callback is not None:
-            update_progress_callback(100)
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -379,13 +381,13 @@ def make_plot(_selection):
         rm.precompute_coeffs()
 
     y_max = 30
-    if Settings.top_only:
+    if settings.top_only:
         y_min = 0
     else:
         y_min = -30
 
-    a = Settings.parameterA
-    b = Settings.parameterB
+    a = settings.parameterA
+    b = settings.parameterB
 
     if _selection == 0:
         mesh_size = 10
@@ -517,7 +519,7 @@ def make_plot(_selection):
                          im=[y_min, y_max],
                          title='Riemann partial sum ' + str(partial_sum_limit))
 
-            Settings.REUSE_FIGURE = True
+            settings.REUSE_FIGURE = True
 
             partial_sum_limit = partial_sum_limit * 2
 
@@ -526,7 +528,7 @@ def make_plot(_selection):
             if rm.quit_computation_flag:
                 break
 
-        Settings.REUSE_FIGURE = False
+        settings.REUSE_FIGURE = False
 
     elif _selection == 16:
         # This is the function that converts Riemann zeta to Dirichlet eta function

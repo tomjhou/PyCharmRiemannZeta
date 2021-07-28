@@ -16,7 +16,7 @@ def do_heatmap():
     from functools import partial
 
     def do_button(wid):
-        rh.Settings.last_selection = wid
+        rh.settings.last_selection = wid
         rh.make_plot(_selection=wid)
 
     def do_quit():
@@ -32,38 +32,38 @@ def do_heatmap():
     def do_density_slider_button_release(_event):
         val = win_heatmap.slider1.get()
         do_density_slider(val)
-        if rh.Settings.auto_recalculate:
+        if rh.settings.auto_recalculate:
             do_recalculate()
 
     def do_density_slider(val):
         # Note: val is a string when called during mouse move, and a float when
         # called during button release
-        rh.Settings.MESH_DENSITY = float(val)
+        rh.settings.MESH_DENSITY = float(val)
         res = float(val) * rh.fig_mgr.screen_y_pixels
         st = str(int(res))
         win_heatmap.label1['text'] = "Resolution = " + st + " x " + st
 
     def do_sliderA_button_release(_event):
         do_parameterA(win_heatmap.sliderA.get())
-        if rh.Settings.auto_recalculate:
+        if rh.settings.auto_recalculate:
             do_recalculate()
 
     def do_parameterA(val):
-        rh.Settings.parameterA = float(val)
+        rh.settings.parameterA = float(val)
         win_heatmap.labelA['text'] = "Parameter A = " + str(val)
 
     def do_sliderB_button_release(_event):
         do_parameterB(win_heatmap.sliderB.get())
-        if rh.Settings.auto_recalculate:
+        if rh.settings.auto_recalculate:
             do_recalculate()
 
     def do_parameterB(val):
-        rh.Settings.parameterB = float(val)
+        rh.settings.parameterB = float(val)
         win_heatmap.labelB['text'] = "Parameter B = " + str(val)
 
     def do_slider_iter_button_release(_event):
         do_iter_slider(win_heatmap.slider_iter.get())
-        if rh.Settings.auto_recalculate:
+        if rh.settings.auto_recalculate:
             do_recalculate()
 
     def do_iter_slider(val):
@@ -73,11 +73,11 @@ def do_heatmap():
 
     def do_recalculate():
         # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
-        wid = rh.Settings.last_selection
+        wid = rh.settings.last_selection
         if wid < 0:
             # No previous selection exists, e.g. we have just launched program
             return
-        rh.Settings.REUSE_FIGURE = True
+        rh.settings.REUSE_FIGURE = True
         rh.make_plot(wid)
 
     def do_cancel():
@@ -92,16 +92,16 @@ def do_heatmap():
 
     def do_phase():
         # Handle user checking-unchecking this box
-        rh.Settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
+        rh.settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
 
     def do_oversample():
         # Handle user checking-unchecking this box
-        rh.Settings.oversample = win_heatmap.var_oversample.get()  # not rh.Settings.oversample
+        rh.settings.oversample = win_heatmap.var_oversample.get()  # not rh.Settings.oversample
 
     def do_auto_recalculate():
         # Handle user checking-unchecking this box
-        rh.Settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
-        if rh.Settings.auto_recalculate:
+        rh.settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
+        if rh.settings.auto_recalculate:
             # Set slider to min value when auto recalc is turned on.
             # win_heatmap.slider1.set(win_heatmap.slider1.cget('from'))
             # Now trigger one initial recalc
@@ -222,13 +222,13 @@ def do_heatmap():
         def set_initial_values(self):
             # These must go outside constructor, as they will trigger callback
             # which needs access to mainApp object
-            self.slider1.set(rh.Settings.MESH_DENSITY)
+            self.slider1.set(rh.settings.MESH_DENSITY)
             self.slider_iter.set(rh.rm.RIEMANN_ITER_LIMIT)
-            self.var_phase.set(0)
-            self.var_oversample.set(0)
-            self.var_auto_recalculate.set(0)
-            self.sliderA.set(rh.Settings.parameterA)
-            self.sliderB.set(rh.Settings.parameterB)
+            self.var_phase.set(rh.settings.phase_only)
+            self.var_oversample.set(rh.settings.oversample)
+            self.var_auto_recalculate.set(rh.settings.auto_recalculate)
+            self.sliderA.set(rh.settings.parameterA)
+            self.sliderB.set(rh.settings.parameterB)
 
     # Note that the following will close a temporary figure, causing tk.mainloop to quit.
     rh.fig_mgr = mfm.MplFigureManager()
