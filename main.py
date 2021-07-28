@@ -160,9 +160,6 @@ def do_heatmap():
             self.sliderB.bind("<ButtonRelease-1>", do_sliderB_button_release)
             self.sliderB.pack(fill=tk.X)
 
-            self.progress = ttk.Progressbar(frame_top_controls, orient="horizontal", length=100, mode="determinate")
-            self.progress.pack(fill=tk.X)
-
             self.label2 = ttk.Label(frame_top_controls, text="Riemann iters =")
             self.label2.pack()
 
@@ -171,17 +168,33 @@ def do_heatmap():
             self.slider_iter.bind("<ButtonRelease-1>", do_slider_iter_button_release)
             self.slider_iter.pack(fill=tk.X)
 
+            self.progress = ttk.Progressbar(frame_top_controls, orient="horizontal", length=100, mode="determinate")
+            self.progress.pack(fill=tk.X)
+
+            # Frame for spinner and accompanying label
+            self.frame_spinner = ttk.Frame(frame_top_controls)
+            self.frame_spinner.pack(fill=tk.X)
+
+            self.label_spinner = ttk.Label(self.frame_spinner, text = "Plot range:  ")
+            self.label_spinner.pack(side=tk.LEFT)
             # spinbox for plot range
             # bug: this does not respond to text input, only mouse clicks
             rh.settings.plot_range = tk.StringVar(win)
-            self.spin1 = ttk.Spinbox(frame_top_controls, from_=1, to=100, command=do_spin1, textvariable=rh.settings.plot_range)
-            self.spin1.pack(fill=tk.X)
+            self.spin1 = ttk.Spinbox(self.frame_spinner, from_=1, to=100, command=do_spin1, textvariable=rh.settings.plot_range)
+            self.spin1.pack(side=tk.LEFT)
             rh.settings.plot_range = str(20)
 
             # Need to bind keys or else value doesn't update
             self.spin1.bind('<Return>', do_spin1_event)
             self.spin1.bind('<FocusOut>', do_spin1_event)
             self.spin1.bind('<FocusIn>', do_spin1_event)
+
+            self.var_top_only = tk.IntVar(win)
+            self.checkbox_top_only = ttk.Checkbutton(self.frame_spinner,
+                                                             text="Top only",
+                                                             command=do_top_only,
+                                                             variable=self.var_top_only)
+            self.checkbox_top_only.pack(side=tk.LEFT)
 
             #
             # Row of buttons
@@ -220,12 +233,6 @@ def do_heatmap():
                                                              variable=self.var_auto_recalculate)
             self.checkbox_auto_recalculate.pack(side=tk.LEFT)
 
-            self.var_top_only = tk.IntVar(win)
-            self.checkbox_top_only = ttk.Checkbutton(self.frame_checks,
-                                                             text="Top only",
-                                                             command=do_top_only,
-                                                             variable=self.var_top_only)
-            self.checkbox_top_only.pack(side=tk.LEFT)
 
             #
             #  Grid of Buttons and controls for various graph types

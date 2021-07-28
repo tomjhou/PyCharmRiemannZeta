@@ -85,7 +85,7 @@ plot_list = {
     8: "Gamma, square",
     10: "sin(az) + b",
     11: "cos(az) + b",
-    12: "Exponential a^z + b",
+    12: "Exponential (a+bi)^z",
     13: "Power z^(a+bi)",
     14: "Exp: pi^(-z/2)",
     15: "Riemann partial sum",
@@ -451,9 +451,9 @@ def make_plot(_selection):
                      title='cos(a*$z$)+b')
     elif _selection == 12:
         # complex exponential function, square
-        plot_domain2(lambda z: np.power(a, z) + b,
+        plot_domain2(lambda z: np.power(a + 1j*b, z),
                      re=[x_min, x_max], im=[y_min, y_max],
-                     title='({:1.2f}'.format(a) + '^$z$) + {:1.2f}'.format(b))
+                     title='({:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j) ^ $z$')
     elif _selection == 13:
         # complex power function, square
         plot_domain2(lambda z: np.power(z, a - 1j*b),
