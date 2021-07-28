@@ -15,6 +15,12 @@ def do_heatmap():
     import riemann_heatmap as rh
     from functools import partial
 
+    def update_slider(percent):
+        #        print("  \r" + '{:1.2f}'.format(percent) + "%", end="")
+        win_heatmap.progress['value'] = percent
+        root.update()
+    #        mainApp.update_idletasks()
+
     def do_button(wid):
         rh.settings.last_selection = wid
         rh.make_plot(_selection=wid)
@@ -82,13 +88,6 @@ def do_heatmap():
 
     def do_cancel():
         rh.rm.quit_computation_flag = True
-
-    def update_slider(percent):
-        #        print("  \r" + '{:1.2f}'.format(percent) + "%", end="")
-        win_heatmap.progress['value'] = percent
-        root.update()
-
-    #        mainApp.update_idletasks()
 
     def do_spin1():
         val = win_heatmap.spin1.get()

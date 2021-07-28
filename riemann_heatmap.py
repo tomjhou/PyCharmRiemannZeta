@@ -20,7 +20,6 @@ import riemann_math as rm
 print('Done importing libraries')
 
 mesh_points = 0  # Number of mesh points. Used to convert progress calls to percent
-qFlag = False    # Becomes true when user clicks "quit" button. Causes computations to wind down gracefully and stop
 update_progress_callback: typing.Callable[[float], None]  # = None
 
 # Counts number of points processed during long computations. Used to update progress bar
@@ -55,13 +54,6 @@ def make_fig_plot(_event, _id):
         settings.last_selection = _id
     make_plot(_id)
     plt.pause(.001)
-
-
-def do_quit(_event):
-    global qFlag
-
-    rm.quit_computation_flag = True
-    qFlag = True
 
 
 def update_computation_status(increment=1):
@@ -109,15 +101,6 @@ checkbox_list = ["Auto recalculate",
 if __name__ == "__main__":
     print("\nPlease run main.py instead of this file. Thank you!!")
 
-
-if False:
-
-    # Old text-based selection method
-    print('Select plot type:\n'
-          '3. Standard Riemann, zoomed critical strip\n'
-          '6. Symmetric Riemann, zoomed critical strip\n'
-          '9. Gamma, zoomed critical strip\n'
-          '14. Exponential: pi^(z/2)\n')
 
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
@@ -393,8 +376,9 @@ def make_plot(_selection):
     b = settings.parameterB
 
     if _selection == 0:
-        mesh_size = 10
-        plot_domain2(lambda z: z, re=[-mesh_size, mesh_size], im=[-mesh_size, mesh_size], title='$z$')
+        plot_domain2(lambda z: z,
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='$z$')
     elif _selection == 1:
         # Standard version, critical strip centered at (0,0)
         plot_domain2(lambda z: rm.riemann(z),
@@ -404,8 +388,7 @@ def make_plot(_selection):
     elif _selection == 2:
         # Standard version, square
         plot_domain2(lambda z: rm.riemann(z),
-                     re=[x_min, x_max],
-                     im=[y_min, y_max],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 3:
         # Standard, zoomed into 0.5 + 50j
@@ -425,8 +408,7 @@ def make_plot(_selection):
     elif _selection == 5:
         # Symmetric version, square
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
-                     re=[x_min, x_max],
-                     im=[y_min, y_max],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 6:
         # Symmetric version, zoomed into 0.5 + 50j
@@ -445,9 +427,8 @@ def make_plot(_selection):
                      title='gamma($z/2$)')
     elif _selection == 8:
         # Gamma(s/2) function, square
-        plot_domain2(lambda z: gamma(z),
-                     re=[x_min, x_max],
-                     im=[y_min, y_max],
+        plot_domain2(lambda z: rm.gamma_with_progress(z),
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$)')
     elif _selection == 9:
         # Gamma(s/2) function, zoomed in, centered at 0.5 + 50j
@@ -460,39 +441,24 @@ def make_plot(_selection):
                      title='gamma($z/2$)')
     elif _selection == 10:
         # sine function, square
-        mesh_size = 10
         plot_domain2(lambda z: np.sin(a * z) + b,
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='sin(a*$z$)+b')
     elif _selection == 11:
         # cosine function, square
-        mesh_size = 20
         plot_domain2(lambda z: np.cos(a * z) + b,
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='cos(a*$z$)+b')
     elif _selection == 12:
         # complex exponential function, square
-        mesh_size = 40
         plot_domain2(lambda z: np.power(a, z) + b,
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='{:1.2f}'.format(a) + '^$z$' + ' + {:1.2f}'.format(b))
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='({:1.2f}'.format(a) + '^$z$) + {:1.2f}'.format(b))
     elif _selection == 13:
         # complex power function, square
-        mesh_size = 40
         plot_domain2(lambda z: np.power(z, a - 1j*b),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='$z$^(' + '{:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j)')
-    elif _selection == 14:
-        #  pi ^ (z/2), one of the two functions multiplied by Riemann to get symmetric Riemann
-        mesh_size = 40
-        plot_domain2(lambda z: np.power(np.pi, -z/2),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='3^$z$')
     elif _selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
@@ -509,36 +475,22 @@ def make_plot(_selection):
 
             partial_sum_limit = partial_sum_limit * 2
 
-            # plt.pause(0.2)
-
             if rm.quit_computation_flag:
                 break
 
         settings.REUSE_FIGURE = False
 
     elif _selection == 16:
-        # This is the function that converts Riemann zeta to Dirichlet eta function
+        # This function converts Riemann zeta to Dirichlet eta function
         # 1 - 2 ^ (1-s)
-        mesh_size = 30
         plot_domain2(lambda z: 1 - np.power(2, 1 - z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='1-2^(1-$z$)')
     elif _selection == 17:
         #  Dirichlet Eta instead of Riemann zeta
-        mesh_size = 20
         plot_domain2(lambda z: rm.riemann(z, do_eta=True),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-#                     re=[x_center - 1, x_center + 3],
-#                     im=[y_min, y_max],
+                     re=[x_min, x_max], im=[y_min, y_max],
                      title='Eta($z$)')
-    elif _selection == 20:
-        mesh_size = 60
-        plot_domain2(lambda z: rm.RiemannGamma(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='Riemann(z) * Gamma($z$)')
 
     rm.quit_computation_flag = False
 
