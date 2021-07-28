@@ -433,16 +433,16 @@ def make_plot(_selection):
                      im=[y_min, y_max],
                      title='gamma($z/2$)')
     elif _selection == 8:
-        # Gamma(s/2) function, square
+        # Gamma(s/2) function, square ±4, ±4
         mesh_size = 4
         plot_domain2(lambda z: gamma(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='gamma($z$)')
     elif _selection == 18:
-        # Gamma(s/2) function, square
+        # Gamma(s/2) function, square ±20, ±20
         mesh_size = 20
-        plot_domain2(lambda z: gamma(z),
+        plot_domain2(lambda z: rm.GammaSinglePoint(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='gamma($z$)')

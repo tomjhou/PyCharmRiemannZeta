@@ -76,10 +76,6 @@ def Riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
         return [0.0 if quit_computation_flag else Riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
     #    return [Riemann(x, do_eta=do_eta) for x in s]
 
-#    if quit_computation_flag:
-        # Checking the quitflag here forces output to have a full array of zeros
-#        return 0
-
     if s == 1.0:
         # Calculation blows up at 1.0, so return 0. We could return nan, but that causes warnings later
         computation_progress_callback()
@@ -166,3 +162,21 @@ def RiemannSymmetric(s):
 
 def RiemannGamma(s):
     return Riemann(s) * gamma(s/2)
+
+
+
+# Diagnostic function to test speed of loop
+# Normal gamma(s) computes ~1.2M samples per second.
+# When looped, this is ~80k points/second!
+# If we omit calling progress_callback(), we can speed it up to 190k points/second.
+def GammaSinglePoint(s):
+
+    if np.size(s) > 1:
+        # Note that this can produce a "ragged" list if interrupted in the middle, with
+        # some rows being full length, and others having just a single zero.
+        return [0.0 if quit_computation_flag else GammaSinglePoint(x) for x in s]
+
+#    if computation_progress_callback is not None:
+#        computation_progress_callback()
+
+    return gamma(s)
