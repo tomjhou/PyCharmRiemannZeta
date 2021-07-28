@@ -39,7 +39,7 @@ Settings.REUSE_FIGURE = False
 Settings.phase_only = False
 Settings.top_only = True
 Settings.last_selection = -1  # Save last graph selection so we can recalculate
-Settings.auto_recalculate = False
+Settings.auto_recalculate = True
 Settings.oversample = False
 Settings.parameterA = 1.0        # Parameter for formula
 Settings.parameterB = 0.0
@@ -238,6 +238,8 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         # Last figure no longer exists. May have been closed by user.
         Settings.REUSE_FIGURE = False
 
+    show_axis = True
+
     if Settings.REUSE_FIGURE:
         plt.figure(Settings.last_figure.number)
         # Clear flag so that we only reuse once. If we want to
@@ -255,36 +257,32 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     if update_progress_callback is not None:
         update_progress_callback(0)
 
-    t1 = time.time()
-
     density = fig_mgr.screen_y_pixels / abs(im[1] - im[0]) * Settings.MESH_DENSITY
     if Settings.oversample:
         density = density * 4
 
     # Mesh points is calculated here. Prior to calling this, it will be zero.
-    mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, True)
+    mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, show_axis)
 
-    # Report time delay
+    # Draw output.
+    # This could take several seconds for large plots, and is excruciatingly slow for 4x oversampled
+    # plots. On MacOS, we see a "wait" cursor right away, while Windows takes much longer to show wait cursor.
     if mesh_points > 0:
-        delay = time.time() - t1
-        print('Completed domain coloring plot in ' + str(delay) + ' seconds')
-        rate = mesh_points / delay
-        print('Rate: ' + fmt(rate) + ' points per second')
-
         try:
             fig_mgr.canvas_plot.draw()
 #            fig_mgr.canvas_plot.flush_events()   # Doesn't seem to be needed
         except tkinter.TclError:
-            print("Previous canvas (fig_mgr.canvas_plot) invalid. Did you close previous window?")
             # If we recalculated but closed the original plot, then there will be a new figure generated
-            # automatically, but fig_mgr.canvas_plot will not be valid, and we need plt.pause() to show figure
-#            plt.pause(0.001)
+            # automatically (that will be some default size), and fig_mgr.canvas_plot will not be valid.
+            # We should try to avoid coming here at all costs, as program is likely to crash eventually.
+            print("Previous canvas (fig_mgr.canvas_plot) invalid. Did you close previous window?")
 
             # Get current figure and save it, so that next recalculate will work normally.
             fig_mgr.fig_plot = plt.gcf()
             fig_mgr.canvas_plot = fig_mgr.fig_plot.canvas
 
-            # Show figure
+            # Show figure. Sometimes this crashes even if the fig_plot variable is now correct. Why?
+            # Best to do prechecks to avoid getting here.
             fig_mgr.fig_plot.show()
 
         if update_progress_callback is not None:
@@ -296,6 +294,10 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
                 density=200,  # Number of points per unit interval
                 show_axis=None):  # Whether to show axis
 
+    # Reset local and rm clocks
+    t1 = time.time()
+    rm.elapsed_time = 0
+
     # Evaluate function f on a grid of points
     w, mesh = eval_grid(f, re, im, density)
 
@@ -304,11 +306,23 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
               str(mesh_points) + " points = " + '{:1.2f}'.format(100 * points_processed / mesh_points) + " %")
         return 0
 
+    # Get time delay from rm.
+    delay = rm.elapsed_time  # time.time() - t1
+
+    if delay == 0:
+        # if not present, use local time
+        delay = time.time() - t1
+    print('Completed heatmap calculation in ' + '{:1.2f}'.format(delay) + ' seconds, ', end="")
+    rate = mesh_points / delay
+    print('Rate: ' + fmt(rate) + ' points per second')
+
     # Convert results to color
     domc = color_func(w, saturation)
     plt.xlabel("$\Re(z)$")
     plt.ylabel("$\Im(z)$")
     plt.title(title)
+
+    # Results will not be visible until caller calls canvas.draw()
     if show_axis:
         plt.imshow(domc, origin="lower",
                    extent=[re[0], re[1], im[0], im[1]])
@@ -363,8 +377,6 @@ def make_plot(_selection):
 
     if (0 < _selection <= 6) or (_selection == 17) or (_selection == 19):
         rm.precompute_coeffs()
-
-    print('Please wait while computing heatmap... (this may take a minute or two)')
 
     y_max = 30
     if Settings.top_only:

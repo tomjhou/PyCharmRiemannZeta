@@ -268,6 +268,8 @@ ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5
 # Because matplotlib.close() will terminate this loop, we wrap it in another loop
 while not quit_flag:
     tk.mainloop()
-    print("Mainloop exited. Reentering now.")
+    print("Mainloop exited.", end="")
+    if not quit_flag:
+        print(" Reentering now.")
 
 print("Finished")
