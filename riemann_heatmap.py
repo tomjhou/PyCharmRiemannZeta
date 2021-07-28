@@ -40,6 +40,7 @@ class SettingsClass:
         self.oversample = False
         self.parameterA = 1.0        # Parameter for formula
         self.parameterB = 0.0
+        self.plot_range: tkinter.StringVar = None
 
 
 settings = SettingsClass()
@@ -429,7 +430,7 @@ def make_plot(_selection):
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 19:
         # Symmetric version, square
-        mesh_size = 20
+        mesh_size = float(settings.plot_range)
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],

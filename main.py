@@ -90,6 +90,14 @@ def do_heatmap():
 
     #        mainApp.update_idletasks()
 
+    def do_spin1():
+        val = win_heatmap.spin1.get()
+        rh.settings.plot_range = val   # This is a string
+#        print("Spin value: " + val)
+
+    def do_spin1_event(_event):
+        do_spin1()
+
     def do_phase():
         # Handle user checking-unchecking this box
         rh.settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
@@ -132,6 +140,7 @@ def do_heatmap():
             self.labelA = ttk.Label(frame_top_controls, text="Parameter A")
             self.labelA.pack()
 
+            # slider for parameter A
             self.sliderA = ttk.Scale(frame_top_controls, from_=-10, to=10, command=do_parameterA)
             self.sliderA.bind("<ButtonRelease-1>", do_sliderA_button_release)
             self.sliderA.pack(fill=tk.X)
@@ -139,6 +148,7 @@ def do_heatmap():
             self.labelB = ttk.Label(frame_top_controls, text="Parameter B")
             self.labelB.pack()
 
+            # slider for parameter B
             self.sliderB = ttk.Scale(frame_top_controls, from_=-10, to=10, command=do_parameterB)
             self.sliderB.bind("<ButtonRelease-1>", do_sliderB_button_release)
             self.sliderB.pack(fill=tk.X)
@@ -149,9 +159,22 @@ def do_heatmap():
             self.label2 = ttk.Label(frame_top_controls, text="Riemann iters =")
             self.label2.pack()
 
+            # slider for iterations
             self.slider_iter = ttk.Scale(frame_top_controls, from_=20, to=100, command=do_iter_slider)
             self.slider_iter.bind("<ButtonRelease-1>", do_slider_iter_button_release)
             self.slider_iter.pack(fill=tk.X)
+
+            # spinbox for plot range
+            # bug: this does not respond to text input, only mouse clicks
+            rh.settings.plot_range = tk.StringVar(win)
+            self.spin1 = ttk.Spinbox(frame_top_controls, from_=1, to=100, command=do_spin1, textvariable=rh.settings.plot_range)
+            self.spin1.pack(fill=tk.X)
+            rh.settings.plot_range = str(20)
+
+            # Need to bind keys or else value doesn't update
+            self.spin1.bind('<Return>', do_spin1_event)
+            self.spin1.bind('<FocusOut>', do_spin1_event)
+            self.spin1.bind('<FocusIn>', do_spin1_event)
 
             #
             # Row of buttons
@@ -229,6 +252,7 @@ def do_heatmap():
             self.var_auto_recalculate.set(rh.settings.auto_recalculate)
             self.sliderA.set(rh.settings.parameterA)
             self.sliderB.set(rh.settings.parameterB)
+            self.spin1.set(rh.settings.plot_range)
 
     # Note that the following will close a temporary figure, causing tk.mainloop to quit.
     rh.fig_mgr = mfm.MplFigureManager()
