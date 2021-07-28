@@ -489,7 +489,7 @@ class GraphicsObjects:
             gv.pltLineCollection.remove()
 
         # pre-generate entire line
-        th2b = rm.Riemann(gv.th1)
+        th2b = rm.riemann(gv.th1)
         if flagAxisScaleIndex > 0:
             # Make lighter colors when scaling is largest
             colors2 = [1.0, 1.0, 1.0, 1.0] - ([1.0, 1.0, 1.0, 1.0] - gv.linecolors) / 4

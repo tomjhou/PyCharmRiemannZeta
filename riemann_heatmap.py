@@ -22,7 +22,9 @@ print('Done importing libraries')
 mesh_points = 0  # Number of mesh points. Used to convert progress calls to percent
 qFlag = False    # Becomes true when user clicks "quit" button. Causes computations to wind down gracefully and stop
 update_progress_callback: typing.Callable[[float], None]  # = None
-callCount = 0    # Incremented with each stop of a long computation. Used to generate progress bar
+
+# Counts number of points processed during long computations. Used to update progress bar
+points_processed = 0
 
 
 class Settings:
@@ -61,15 +63,16 @@ def do_quit(_event):
     qFlag = True
 
 
-def update_computation_status():
-    global callCount
-    callCount = callCount + 1
+def update_computation_status(increment=1):
+    global points_processed
+
+    points_processed += increment
+
     if update_progress_callback is not None:
-        if np.mod(callCount, 100) == 0:
-            update_progress_callback(callCount * 100 / mesh_points)
+        update_progress_callback(points_processed * 100 / mesh_points)
     else:
-        if np.mod(callCount, 20000) == 0:
-            print("   \r" + str(int(callCount / 1000)) + "k ", end='')  # Print status every 10k samples
+        if np.mod(points_processed, 20000) == 0:
+            print("   \r" + str(int(points_processed / 1000)) + "k ", end='')  # Print status every 10k samples
 
 
 mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
@@ -226,7 +229,7 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
 # Creates figure, then calls plot_domain with standard options. When done, calculates
 # points per second calculation speed
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
-    global Settings, mesh_points, callCount
+    global Settings, mesh_points, points_processed
 
     if not hasattr(Settings, 'last_figure'):
         # Last figure never created. May have just launched program.
@@ -248,7 +251,7 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         Settings.last_figure = fig
         fig.canvas.draw()
 
-    callCount = 0
+    points_processed = 0
     if update_progress_callback is not None:
         update_progress_callback(0)
 
@@ -284,8 +287,8 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
             # Show figure
             fig_mgr.fig_plot.show()
 
-#        if update_progress_callback is not None:
-#            update_progress_callback(100)
+        if update_progress_callback is not None:
+            update_progress_callback(100)
 
 
 def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
@@ -297,8 +300,8 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
     w, mesh = eval_grid(f, re, im, density)
 
     if rm.quit_computation_flag:
-        print("Calculation cancelled by user after " + str(callCount) + " of " +
-              str(mesh_points) + " points = " + '{:1.2f}'.format(100*callCount/mesh_points) + " %")
+        print("Calculation cancelled by user after " + str(points_processed) + " of " +
+              str(mesh_points) + " points = " + '{:1.2f}'.format(100 * points_processed / mesh_points) + " %")
         return 0
 
     # Convert results to color
@@ -377,14 +380,14 @@ def make_plot(_selection):
         plot_domain2(lambda z: z, re=[-mesh_size, mesh_size], im=[-mesh_size, mesh_size], title='$z$')
     elif _selection == 1:
         # Standard version, critical strip centered at (0,0)
-        plot_domain2(lambda z: rm.Riemann(z),
+        plot_domain2(lambda z: rm.riemann(z),
                      re=[x_center - 1, x_center + 2],
                      im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 2:
         # Standard version, square
         mesh_size = 20
-        plot_domain2(lambda z: rm.Riemann(z),
+        plot_domain2(lambda z: rm.riemann(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
@@ -393,7 +396,7 @@ def make_plot(_selection):
         mesh_size = 10
         x_center = 0.5
         y_center = 50
-        plot_domain2(lambda z: rm.Riemann(z),
+        plot_domain2(lambda z: rm.riemann(z),
                      re=[x_center - mesh_size/5, x_center + mesh_size/5],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
@@ -442,7 +445,7 @@ def make_plot(_selection):
     elif _selection == 18:
         # Gamma(s/2) function, square ±20, ±20
         mesh_size = 20
-        plot_domain2(lambda z: rm.GammaSinglePoint(z),
+        plot_domain2(lambda z: rm.gamma_with_progress(z),
                      re=[x_center - mesh_size, x_center + mesh_size],
                      im=[y_center - mesh_size, y_center + mesh_size],
                      title='gamma($z$)')
@@ -523,9 +526,12 @@ def make_plot(_selection):
                      title='1-2^(1-$z$)')
     elif _selection == 17:
         #  Dirichlet Eta instead of Riemann zeta
-        plot_domain2(lambda z: rm.Riemann(z, do_eta=True),
-                     re=[x_center - 1, x_center + 3],
-                     im=[y_min, y_max],
+        mesh_size = 20
+        plot_domain2(lambda z: rm.riemann(z, do_eta=True),
+                     re=[x_center - mesh_size, x_center + mesh_size],
+                     im=[y_center - mesh_size, y_center + mesh_size],
+#                     re=[x_center - 1, x_center + 3],
+#                     im=[y_min, y_max],
                      title='Eta($z$)')
     elif _selection == 20:
         mesh_size = 60

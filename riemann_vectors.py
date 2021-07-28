@@ -91,7 +91,7 @@ def MakeLine():
 th1b, line1 = MakeLine()
 plt.pause(.001)  # Draws items to screen
 
-tmp, numArrowsPlusOne = rm.Riemann(2, True)  # Second argument returns required array size
+tmp, numArrowsPlusOne = rm.riemann(2, True)  # Second argument returns required array size
 
 # Create red "input" arrow
 if InputStyle == mg.PatchStyle.ARROW or InputStyle == mg.PatchStyle.ARROW_CIRCLE:
@@ -155,7 +155,7 @@ localShowSideDots = False
 DesiredStepsPerSecond_base = 1
 
 inputVal = gv.th1[0]
-outputVal = rm.Riemann(inputVal)
+outputVal = rm.riemann(inputVal)
 mg.arrowOutput = []
 
 wait_cursor(True)
@@ -187,7 +187,7 @@ while mg.quit_flag == 0:
             DesiredStepsPerSecond_base * mg.get_animation_speed() / np.abs(rm.EtaToZetaScale(inputVal))
 
     inputVal = mg.GetPoint(currentPoint)
-    outputVal = rm.Riemann(inputVal)
+    outputVal = rm.riemann(inputVal)
 
     mg.CheckArrows()
 
@@ -252,8 +252,8 @@ while mg.quit_flag == 0:
                 inputCirclePatch2.set_radius(CIRCLE_PATCH_SCALE * mg.GetAxisScale() / 2)
                 inputCirclePatch3.set_radius(CIRCLE_PATCH_SCALE * mg.GetAxisScale() / 2)
 
-                outputVal2 = rm.Riemann(inputVal2)
-                outputVal3 = rm.Riemann(inputVal3)
+                outputVal2 = rm.riemann(inputVal2)
+                outputVal3 = rm.riemann(inputVal3)
 
                 outputCirclePatch2.center = outputVal2.real, outputVal2.imag
                 outputCirclePatch3.center = outputVal3.real, outputVal3.imag

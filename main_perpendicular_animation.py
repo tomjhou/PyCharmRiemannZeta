@@ -57,7 +57,7 @@ ANIMATION_STEP = ANIMATION_STEP_BASE * mg.GetAxisScale()
 
 LINE_X = 0.5 - ANIMATION_RANGE / 2
 th1, line_colors = mg.MakeLine(PLOT_DOMAIN, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
-tmp, numArrowsPlusOne = rm.Riemann(2, True) # Last argument returns required array size
+tmp, numArrowsPlusOne = rm.riemann(2, True) # Last argument returns required array size
 # Create new outArray that will be used to generate arrows. Has one more element than arrow
 rm.outArray = np.zeros(numArrowsPlusOne, dtype=complex)
 
@@ -66,7 +66,7 @@ line1 = mg.multiline(np.real(th1), np.imag(th1), color=line_colors, linewidths=0
 gv.ax1.add_collection(line1)
 
 # Create output rainbow line
-th2 = rm.Riemann(th1)
+th2 = rm.riemann(th1)
 th2b = [x * OUTPUT_SCALE for x in th2]
 line2 = mg.multiline(np.real(th2b), np.imag(th2b), color=line_colors, linewidths=0.5)
 pltLineCollection = gv.ax1.add_collection(line2)
@@ -113,7 +113,7 @@ while mg.quit_flag == 0:
             INPUT_SCALE = INPUT_SCALE_EXPANDED if mg.flagExpandInput else INPUT_SCALE_BASE
 
             th1, line_colors = mg.MakeLine(PLOT_DOMAIN, INPUT_SCALE, INPUT_LINE_RESOLUTION, LINE_X)
-            th2 = rm.Riemann(th1)
+            th2 = rm.riemann(th1)
             th2b = [x * OUTPUT_SCALE for x in th2]
 
             mg.multiline(np.real(th1), np.imag(th1), line1, color=line_colors)
