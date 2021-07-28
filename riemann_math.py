@@ -231,7 +231,7 @@ def riemann_array(s, row_num, do_eta=False, use_neg_denom=False):
         # Use functional equation if Re[s] is negative, or else sum won't converge
         # Only checks the first element - we assume all are negative, or all are non-negative
         if do_eta:
-            return -s * riemann_array(1 - s, row_num, do_eta=do_eta, use_neg_denom=True) \
+            return -2 * s * riemann_array(1 - s, row_num, do_eta=do_eta, use_neg_denom=True) \
                    * gamma(- s) * np.sin(-s * np.pi / 2) * np.power(np.pi, s - 1) \
                    * (1 - np.power(2, s - 1)) / (1 - np.power(2, s))
         else:
