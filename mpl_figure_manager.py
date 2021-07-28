@@ -19,7 +19,9 @@ class MplFigureManager:
             plt.pause(.001)  # Draw items to screen so we can get size
             screen_x, screen_y = fig_tmp.get_size_inches() * self.dpi  # size in pixels
         elif self.backend == "TkAgg":
-            screen_x, screen_y = window.wm_maxsize()  # This works for TkAgg, but not Qt5Agg
+            screen_x = window.winfo_screenwidth()
+            screen_y = window.winfo_screenheight()
+#            screen_x, screen_y = window.wm_maxsize()  # This works for TkAgg, but not Qt5Agg
         else:
             print("Unsupported backend " + self.backend)
             screen_y = 1024
@@ -28,13 +30,15 @@ class MplFigureManager:
         plt.close()
 
         self.screen_y_pixels = screen_y
+        print("Screen y resolution: " + str(screen_y))
+        print("Screen dpi: " + str(self.dpi))
 
         self.canvas_buttons = None
         self.menu_width_pixels = 500
 
         # Create figure 1 for main plots
-        self.fig_plot: plt.Figure  # = None
-        self.canvas_plot: mpl.backends.backend_tkagg.FigureCanvasTkAgg  # = None
+        self.fig_plot: plt.Figure = None
+        self.canvas_plot: mpl.backends.backend_tkagg.FigureCanvasTkAgg = None
 
     def make_plot_fig(self, x_size=1.0, y_size=1.0):
         # size parameters are as fraction of screen HEIGHT
@@ -60,12 +64,17 @@ class MplFigureManager:
 
         return self.fig_plot
 
-    def set_figure_size(self, fig, x_size=1.0, y_size=1.0):
+    def set_figure_size(self, fig : plt.Figure, x_size=1.0, y_size=1.0):
         # size units are in fractions of screen HEIGHT.
         screen_y_adj = int(self.screen_y_pixels * .95 * y_size)  # Reduce height ~5% so we don't overlap windows taskbar
 
+        self.dpi = fig.dpi
+        x_inches = screen_y_adj * x_size / self.dpi
+        y_inches = screen_y_adj * y_size / self.dpi
+        print("Creating window with size (in inches) " + str(x_inches) + " x " + str(y_inches))
+
         # Make large square window for main plots
-        fig.set_size_inches(screen_y_adj * x_size / self.dpi, screen_y_adj * y_size / self.dpi)
+        fig.set_size_inches(x_inches, y_inches)
 
     def move_window(self, canvas, x_pixels, y_pixels):  # x and y are in pixels
 
