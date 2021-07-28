@@ -55,6 +55,7 @@ def EtaToZetaScale(v):
 # differences
 array_zero_split = 0
 elapsed_time = 0
+entry_count = 0
 #
 # Calculate Riemann zeta function for complex input s.
 #
@@ -77,9 +78,15 @@ elapsed_time = 0
 # for Re(s) < 0.
 #
 def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
-    global row_count, array_zero_split, elapsed_time
+    global row_count, array_zero_split, elapsed_time, entry_count
 
     if s.ndim == 2:
+        if entry_count > 1:
+            # Prevent this from running more than once concurrently
+            return 0
+
+        entry_count += 1
+
         t1 = time.time()
         precompute_denom(s)
         delay = time.time() - t1
@@ -89,6 +96,7 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
         # When doing heatmaps, s is initially a list of ndarrays. It will call itself recursively for each list item
         out = [0.0 if quit_computation_flag else riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
         elapsed_time = time.time() - t1
+        entry_count -= 1
         return out
 
     # Now we have 1D vector or single value
@@ -249,6 +257,8 @@ def riemann_array(s,
                   do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
                   left_half_plane=False):  # True if called RECURSIVELY for Re(s) < 0. False otherwise, even if Re(s)<0
 
+    global quit_computation_flag
+
     if len(s) == 0:
         return []
 
@@ -282,8 +292,14 @@ def riemann_array(s,
 
     if USE_CACHED_FUNC:
         if left_half_plane:
-            cum_sum = np.dot(np.multiply(NK2_array, pre_computed_denom_left_phase[row_num]),
+            try:
+                cum_sum = np.dot(np.multiply(NK2_array, pre_computed_denom_left_phase[row_num]),
                              pre_computed_denom_left_mag)   # Dot product is much faster than loop
+            except:
+                print("Error during riemann_arrays. Do you have two concurrent operations underway?")
+                quit_computation_flag = True
+                return []
+
     #        phase = pre_computed_denom_left_phase[row_num]
     #        for k in range(0, RIEMANN_ITER_LIMIT):
     #            cum_sum += NK2_array[k] * pre_computed_denom_left_mag[k] * phase[k]

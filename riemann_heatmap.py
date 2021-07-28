@@ -34,7 +34,7 @@ class SettingsClass:
         self.oversample = False
         self.REUSE_FIGURE = False
         self.phase_only = False
-        self.top_only = True
+        self.top_only = False
         self.last_selection = -1  # Save last graph selection so we can recalculate
         self.auto_recalculate = True
         self.oversample = False
@@ -86,13 +86,11 @@ fig_mgr: mfm.MplFigureManager   # = None
 plot_list = {
     0: "Pinwheel",
     1: "Riemann, strip",
-    2: "Riemann, square20",
+    2: "Riemann, square",
     4: "Symmetric Riemann, strip",
-    5: "Symmetric Riemann, square2",
-    19: "Symmetric Riemann, square20",
+    5: "Symmetric Riemann, square",
     7: "Gamma, strip",
-    8: "Gamma, square4",
-    18: "Gamma, square20",
+    8: "Gamma, square",
     10: "sin(az) + b",
     11: "cos(az) + b",
     12: "Exponential a^z + b",
@@ -381,11 +379,15 @@ def make_plot(_selection):
     if (0 < _selection <= 6) or (_selection == 17) or (_selection == 19):
         rm.precompute_coeffs()
 
-    y_max = 30
+    y_max = float(settings.plot_range)
     if settings.top_only:
         y_min = 0
+        x_min = -y_max/2
+        x_max = y_max/2
     else:
-        y_min = -30
+        y_min = -y_max
+        x_min = y_min
+        x_max = y_max
 
     a = settings.parameterA
     b = settings.parameterB
@@ -401,10 +403,9 @@ def make_plot(_selection):
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 2:
         # Standard version, square
-        mesh_size = 20
         plot_domain2(lambda z: rm.riemann(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max],
+                     im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 3:
         # Standard, zoomed into 0.5 + 50j
@@ -423,17 +424,9 @@ def make_plot(_selection):
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
         # Symmetric version, square
-        mesh_size = 2
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
-    elif _selection == 19:
-        # Symmetric version, square
-        mesh_size = float(settings.plot_range)
-        plot_domain2(lambda z: rm.RiemannSymmetric(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max],
+                     im=[y_min, y_max],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 6:
         # Symmetric version, zoomed into 0.5 + 50j
@@ -451,18 +444,10 @@ def make_plot(_selection):
                      im=[y_min, y_max],
                      title='gamma($z/2$)')
     elif _selection == 8:
-        # Gamma(s/2) function, square ±4, ±4
-        mesh_size = 4
+        # Gamma(s/2) function, square
         plot_domain2(lambda z: gamma(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='gamma($z$)')
-    elif _selection == 18:
-        # Gamma(s/2) function, square ±20, ±20
-        mesh_size = 20
-        plot_domain2(lambda z: rm.gamma_with_progress(z),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size, y_center + mesh_size],
+                     re=[x_min, x_max],
+                     im=[y_min, y_max],
                      title='gamma($z$)')
     elif _selection == 9:
         # Gamma(s/2) function, zoomed in, centered at 0.5 + 50j

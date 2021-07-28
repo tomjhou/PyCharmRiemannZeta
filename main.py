@@ -97,22 +97,30 @@ def do_heatmap():
 
     def do_spin1_event(_event):
         do_spin1()
+        if rh.settings.auto_recalculate:
+            do_recalculate()
 
     def do_phase():
         # Handle user checking-unchecking this box
         rh.settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
+        if rh.settings.auto_recalculate:
+            do_recalculate()
 
     def do_oversample():
         # Handle user checking-unchecking this box
         rh.settings.oversample = win_heatmap.var_oversample.get()  # not rh.Settings.oversample
+        if rh.settings.auto_recalculate:
+            do_recalculate()
 
     def do_auto_recalculate():
         # Handle user checking-unchecking this box
         rh.settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
         if rh.settings.auto_recalculate:
-            # Set slider to min value when auto recalc is turned on.
-            # win_heatmap.slider1.set(win_heatmap.slider1.cget('from'))
-            # Now trigger one initial recalc
+            do_recalculate()
+
+    def do_top_only():
+        rh.settings.top_only = win_heatmap.var_top_only.get()
+        if rh.settings.auto_recalculate:
             do_recalculate()
 
     class WinHeatMap:
@@ -213,6 +221,13 @@ def do_heatmap():
                                                              variable=self.var_auto_recalculate)
             self.checkbox_auto_recalculate.pack(side=tk.LEFT)
 
+            self.var_top_only = tk.IntVar(win)
+            self.checkbox_top_only = ttk.Checkbutton(self.frame_checks,
+                                                             text="Top only",
+                                                             command=do_top_only,
+                                                             variable=self.var_top_only)
+            self.checkbox_top_only.pack(side=tk.LEFT)
+
             #
             #  Grid of Buttons and controls for various graph types
             #
@@ -250,6 +265,7 @@ def do_heatmap():
             self.var_phase.set(rh.settings.phase_only)
             self.var_oversample.set(rh.settings.oversample)
             self.var_auto_recalculate.set(rh.settings.auto_recalculate)
+            self.var_top_only.set(rh.settings.top_only)
             self.sliderA.set(rh.settings.parameterA)
             self.sliderB.set(rh.settings.parameterB)
             self.spin1.set(rh.settings.plot_range)
