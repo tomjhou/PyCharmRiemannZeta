@@ -95,9 +95,12 @@ def do_heatmap():
 #        print("Spin value: " + val)
 
     def do_spin1_event(_event):
-        do_spin1()
-        if rh.settings.auto_recalculate:
-            do_recalculate()
+        val = win_heatmap.spin1.get()
+        if rh.settings.plot_range != val:
+            # Only update if it has changed.
+            rh.settings.plot_range = val   # This is a string
+            if rh.settings.auto_recalculate:
+                do_recalculate()
 
     def do_phase():
         # Handle user checking-unchecking this box

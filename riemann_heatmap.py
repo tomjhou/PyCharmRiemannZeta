@@ -29,7 +29,7 @@ points_processed = 0
 class SettingsClass:
     def __init__(self):
         self.SCALE = .98       # Plot size as a function of screen height
-        self.MESH_DENSITY = 0.35  # Set # of mesh points as a function of "standard"
+        self.MESH_DENSITY = 0.65  # Set # of mesh points as a function of "standard"
         self.oversample = False
         self.REUSE_FIGURE = False
         self.phase_only = False
