@@ -93,7 +93,7 @@ plot_list = {
     15: "Riemann partial sum",
     16: "1 - 2 ^ (1-z)",
     17: "Dirichlet eta",
-    20: "Riemann * Gamma"
+    18: "gamma(z/2) * pi^(-z/2)"
 }
 
 checkbox_list = ["Auto recalculate",
@@ -456,6 +456,11 @@ def make_plot(_selection):
         plot_domain2(lambda z: rm.riemann(z, do_eta=True),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='Eta($z$)')
+    elif _selection == 18:
+        #  gamma(s / 2) * (np.pi ** (-s / 2))
+        plot_domain2(lambda z: np.power(np.pi, -z/2) * gamma(z/2),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='gamma($z$/2)*pi^(-$z$/2)')
 
     rm.quit_computation_flag = False
 

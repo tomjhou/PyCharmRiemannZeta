@@ -332,7 +332,6 @@ def riemann_array(s,
             return cum_sum / (1 - np.power(2, 1 - s))
 
 
-
 #
 # When multiplied by gamma(s/2) * pi ^(-s/2), the result has 180-deg rotational symmetry around s = 0.5 + 0j
 #
