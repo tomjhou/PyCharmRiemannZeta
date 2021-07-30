@@ -86,6 +86,13 @@ def do_heatmap():
         rh.settings.REUSE_FIGURE = True
         rh.make_plot(wid)
 
+    def do_remap_color():
+        # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
+        if rh.settings.last_selection < 0:
+            # No previous selection exists, e.g. we have just launched program
+            return
+        rh.map_color()
+
     def do_cancel():
         rh.rm.quit_computation_flag = True
 
@@ -147,25 +154,39 @@ def do_heatmap():
             if rh.settings.auto_recalculate:
                 do_recalculate()
 
-    def do_phase():
+    def do_checkbox_phase_only():
         # Handle user checking-unchecking this box
         rh.settings.phase_only = win_heatmap.var_phase.get()  # not rh.Settings.phase_only
+        if rh.settings.phase_only:
+            # If checking, then uncheck the other one ... should we use a radio button instead?
+            rh.settings.magnitude_only = 0
+            win_heatmap.var_magnitude_only.set(0)
         if rh.settings.auto_recalculate:
-            do_recalculate()
+            do_remap_color()
 
-    def do_oversample():
+    def do_checkbox_magnitude_only():
+        # Handle user checking-unchecking this box
+        rh.settings.magnitude_only = win_heatmap.var_magnitude_only.get()  # not rh.Settings.phase_only
+        if rh.settings.magnitude_only:
+            # If checking, then uncheck the other
+            rh.settings.phase_only = 0
+            win_heatmap.var_phase.set(0)
+        if rh.settings.auto_recalculate:
+            do_remap_color()
+
+    def do_checkbox_oversample():
         # Handle user checking-unchecking this box
         rh.settings.oversample = win_heatmap.var_oversample.get()  # not rh.Settings.oversample
         if rh.settings.auto_recalculate:
             do_recalculate()
 
-    def do_auto_recalculate():
+    def do_checkbox_auto_recalculate():
         # Handle user checking-unchecking this box
         rh.settings.auto_recalculate = win_heatmap.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
         if rh.settings.auto_recalculate:
             do_recalculate()
 
-    def do_top_only():
+    def do_positive_y_only():
         rh.settings.top_only = win_heatmap.var_top_only.get()
         if rh.settings.auto_recalculate:
             do_recalculate()
@@ -296,7 +317,7 @@ def do_heatmap():
             self.var_top_only = tk.IntVar(win)
             self.checkbox_top_only = ttk.Checkbutton(self.frame_checks_plot,
                                                              text="Positive y only",
-                                                             command=do_top_only,
+                                                             command=do_positive_y_only,
                                                              variable=self.var_top_only)
             self.checkbox_top_only.pack(side=tk.LEFT)
 
@@ -319,21 +340,28 @@ def do_heatmap():
             self.var_phase = tk.IntVar(win)
             self.checkbox_phase = ttk.Checkbutton(self.frame_checks,
                                                   text="Phase only",
-                                                  command=do_phase,
+                                                  command=do_checkbox_phase_only,
                                                   variable=self.var_phase)
             self.checkbox_phase.pack(side=tk.LEFT)
+
+            self.var_magnitude_only = tk.IntVar(win)
+            self.checkbox_magnitude_only = ttk.Checkbutton(self.frame_checks,
+                                                  text="Mag only",
+                                                  command=do_checkbox_magnitude_only,
+                                                  variable=self.var_magnitude_only)
+            self.checkbox_magnitude_only.pack(side=tk.LEFT)
 
             self.var_oversample = tk.IntVar(win)
             self.checkbox_oversample = ttk.Checkbutton(self.frame_checks,
                                                        text="4x oversample",
-                                                       command=do_oversample,
+                                                       command=do_checkbox_oversample,
                                                        variable=self.var_oversample)
             self.checkbox_oversample.pack(side=tk.LEFT)
 
             self.var_auto_recalculate = tk.IntVar(win)
             self.checkbox_auto_recalculate = ttk.Checkbutton(self.frame_checks,
                                                              text="Auto recalc",
-                                                             command=do_auto_recalculate,
+                                                             command=do_checkbox_auto_recalculate,
                                                              variable=self.var_auto_recalculate)
             self.checkbox_auto_recalculate.pack(side=tk.LEFT)
 
@@ -380,6 +408,7 @@ def do_heatmap():
 
             # Checkboxes for general plot behavior
             self.var_phase.set(rh.settings.phase_only)
+            self.var_magnitude_only.set(rh.settings.magnitude_only)
             self.var_oversample.set(rh.settings.oversample)
             self.var_auto_recalculate.set(rh.settings.auto_recalculate)
 
