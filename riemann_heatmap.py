@@ -33,13 +33,19 @@ class SettingsClass:
         self.oversample = False
         self.REUSE_FIGURE = False
         self.phase_only = False
+
+        # Boolean variables to control plot domain
         self.top_only = False
+        self.critical_strip = False
+        self.keep_square: tkinter.IntVar
+
         self.last_selection = -1  # Save last graph selection so we can recalculate
         self.auto_recalculate = True
         self.oversample = False
         self.parameterA = 1.0        # Parameter for formula
         self.parameterB = 0.0
-        self.plot_range: tkinter.StringVar = None
+        self.plot_range = 20.0
+        self.plot_range_x = 20.0
 
 
 settings = SettingsClass()
@@ -76,18 +82,14 @@ fig_mgr: mfm.MplFigureManager   # = None
 
 # New button-based GUI selection method
 plot_list = {
+    2: "Riemann",
+    5: "Symmetric Riemann",
     0: "Pinwheel",
-    1: "Riemann, strip",
-    2: "Riemann, square",
-    4: "Symmetric Riemann, strip",
-    5: "Symmetric Riemann, square",
-    7: "Gamma, strip",
-    8: "Gamma, square",
+    8: "Gamma",
     10: "sin(az) + b",
     11: "cos(az) + b",
     12: "Exponential (a+bi)^z",
     13: "Power z^(a+bi)",
-    14: "Exp: pi^(-z/2)",
     15: "Riemann partial sum",
     16: "1 - 2 ^ (1-z)",
     17: "Dirichlet eta",
@@ -297,8 +299,13 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
         # if not present, use local time
         delay = time.time() - t1
     print('Completed heatmap calculation in ' + '{:1.2f}'.format(delay) + ' seconds, ', end="")
-    rate = mesh_points / delay
-    print('Rate: ' + fmt(rate) + ' points per second')
+
+    if delay > 0:
+        rate = mesh_points / delay
+        print('Rate: ' + fmt(rate) + ' points per second')
+    else:
+        # Sometimes computation is so fast, latency rounds to 0. In that case, don't calculate rate
+        print()
 
     # Convert results to color
     domc = color_func(w, saturation)
@@ -362,15 +369,19 @@ def make_plot(_selection):
     if (0 < _selection <= 6) or (_selection == 17) or (_selection == 19):
         rm.precompute_coeffs()
 
-    y_max = float(settings.plot_range)
+    y_max = settings.plot_range
+    x_max = settings.plot_range_x
     if settings.top_only:
         y_min = 0
-        x_min = -y_max/2
-        x_max = y_max/2
+        x_max /= 2
+        x_min = -x_max
     else:
         y_min = -y_max
-        x_min = y_min
-        x_max = y_max
+        x_min = -x_max
+
+    if settings.critical_strip:
+        x_min = -1
+        x_max = 2
 
     a = settings.parameterA
     b = settings.parameterB
@@ -379,83 +390,38 @@ def make_plot(_selection):
         plot_domain2(lambda z: z,
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='$z$')
-    elif _selection == 1:
-        # Standard version, critical strip centered at (0,0)
-        plot_domain2(lambda z: rm.riemann(z),
-                     re=[x_center - 1, x_center + 2],
-                     im=[y_min, y_max],
-                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 2:
-        # Standard version, square
+        # Standard Riemann function
         plot_domain2(lambda z: rm.riemann(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
-    elif _selection == 3:
-        # Standard, zoomed into 0.5 + 50j
-        mesh_size = 10
-        x_center = 0.5
-        y_center = 50
-        plot_domain2(lambda z: rm.riemann(z),
-                     re=[x_center - mesh_size/5, x_center + mesh_size/5],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
-    elif _selection == 4:
-        # Symmetric version, critical strip
-        plot_domain2(lambda z: rm.RiemannSymmetric(z),
-                     re=[x_center - 1, x_center + 2],
-                     im=[y_min, y_max],
-                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
-        # Symmetric version, square
+        # Symmetric Riemann function
         plot_domain2(lambda z: rm.RiemannSymmetric(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
-    elif _selection == 6:
-        # Symmetric version, zoomed into 0.5 + 50j
-        mesh_size = 10
-        x_center = 0.5
-        y_center = 50
-        plot_domain2(lambda z: rm.RiemannSymmetric(z),
-                     re=[x_center - mesh_size/5, x_center + mesh_size/5],
-                     im=[y_center - mesh_size, y_center + mesh_size],
-                     title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
-    elif _selection == 7:
-        # Gamma(s/2) function, vertical strip centered at (0,0)
-        plot_domain2(lambda z: gamma(z / 2),
-                     re=[x_center - 1, x_center + 2],
-                     im=[y_min, y_max],
-                     title='gamma($z/2$)')
     elif _selection == 8:
-        # Gamma(s/2) function, square
+        # Gamma(s/2) function
         plot_domain2(lambda z: rm.gamma_with_progress(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$)')
-    elif _selection == 9:
-        # Gamma(s/2) function, zoomed in, centered at 0.5 + 50j
-        mesh_size = 2
-        x_center = 0.5
-        y_center = 50
-        plot_domain2(lambda z: gamma(z / 2),
-                     re=[x_center - mesh_size, x_center + mesh_size],
-                     im=[y_center - mesh_size * 5, y_center + mesh_size * 5],
-                     title='gamma($z/2$)')
     elif _selection == 10:
-        # sine function, square
+        # sine function
         plot_domain2(lambda z: np.sin(a * z) + b,
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='sin(a*$z$)+b')
     elif _selection == 11:
-        # cosine function, square
+        # cosine function
         plot_domain2(lambda z: np.cos(a * z) + b,
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='cos(a*$z$)+b')
     elif _selection == 12:
-        # complex exponential function, square
+        # complex exponential function
         plot_domain2(lambda z: np.power(a + 1j*b, z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='({:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j) ^ $z$')
     elif _selection == 13:
-        # complex power function, square
+        # complex power function
         plot_domain2(lambda z: np.power(z, a - 1j*b),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='$z$^(' + '{:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j)')
@@ -467,8 +433,7 @@ def make_plot(_selection):
         for x in range(0, 20):
 
             plot_domain2(lambda z: riemann_partial_sum(z, partial_sum_limit),
-                         re=[x_center - 1, x_center + 3],
-                         im=[y_min, y_max],
+                         re=[x_min, x_max], im=[y_min, y_max],
                          title='Riemann partial sum ' + str(partial_sum_limit))
 
             settings.REUSE_FIGURE = True

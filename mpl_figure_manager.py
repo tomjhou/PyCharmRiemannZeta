@@ -29,6 +29,7 @@ class MplFigureManager:
         # This causes Tkinter mainloop to exit
         plt.close()
 
+        self.screen_x_pixels = screen_x
         self.screen_y_pixels = screen_y
         print("Screen y resolution: " + str(screen_y))
         print("Screen dpi: " + str(self.dpi))
@@ -69,7 +70,10 @@ class MplFigureManager:
         screen_y_adj = int(self.screen_y_pixels * .95 * y_size)  # Reduce height ~5% so we don't overlap windows taskbar
 
         self.dpi = fig.dpi
-        x_inches = screen_y_adj * x_size / self.dpi
+        x_pixels = screen_y_adj * x_size
+        if x_pixels > self.screen_x_pixels:
+            x_pixels = self.screen_x_pixels
+        x_inches = x_pixels / self.dpi
         y_inches = screen_y_adj * y_size / self.dpi
         print("Creating window with size (in inches) " + str(x_inches) + " x " + str(y_inches))
 
