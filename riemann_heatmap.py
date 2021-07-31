@@ -16,6 +16,7 @@ import time
 
 import riemann_math as rm
 
+import mpl_figure_manager as mfm
 
 print('Done importing libraries')
 
@@ -30,20 +31,27 @@ class SettingsClass:
     def __init__(self):
         self.SCALE = .98       # Plot size as a function of screen height
         self.MESH_DENSITY = 0.65  # Set # of mesh points as a function of "standard"
-        self.oversample = False
+
+        # Flags for recalculation
+        self.last_selection = -1  # Save last graph selection so we can recalculate
+        self.auto_recalculate = True
         self.REUSE_FIGURE = False
+
+        # Flags for color/resolution control
+        self.oversample = False
         self.phase_only = False
+        self.magnitude_only = False
 
         # Boolean variables to control plot domain
         self.top_only = False
         self.critical_strip = False
         self.keep_square: tkinter.IntVar
 
-        self.last_selection = -1  # Save last graph selection so we can recalculate
-        self.auto_recalculate = True
-        self.oversample = False
-        self.parameterA = 1.0        # Parameter for formula
+        # Formula parameters
+        self.parameterA = 1.0
         self.parameterB = 0.0
+
+        # Plot range control
         self.plot_range_y = 20.0
         self.plot_range_x = 20.0
         self.plot_y_start = 0
@@ -78,7 +86,6 @@ def update_computation_status(increment=1):
 mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
 # mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
 
-import mpl_figure_manager as mfm
 fig_mgr: mfm.MplFigureManager   # = None
 
 # New button-based GUI selection method
@@ -97,13 +104,9 @@ plot_list = {
     18: "gamma(z/2) * pi^(-z/2)"
 }
 
-checkbox_list = ["Auto recalculate",
-                 "Im>0 only",
-                 "Phase only"]
 
 if __name__ == "__main__":
     print("\nPlease run main.py instead of this file. Thank you!!")
-
 
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
@@ -161,14 +164,11 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
 
     global settings
 
-    H = Hcomplex(w)  # Determine hue
-    # S = s * np.ones(H.shape)  # Saturation = 1.0 always
-
     mag = np.absolute(w)  #
     mag = np.where(mag < 1e-323, 1e-323, mag)  # To avoid divide by zero errors, impose a min magnitude
 
     if settings.phase_only:
-        v = 1
+        v = np.ones(w.shape)
     else:
         elas = 0.1  # Elasticity ... higher numbers give faster transition from dark to light
         intensity_range = 0.97  # Diff between max, min intensity. Should be <1.0, otherwise low values go black
@@ -183,29 +183,34 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
         # Hence, V[f^-1(s)] = 1 - V[f(s)]
         v = 1 - intensity_range / (1 + mag ** elas)
 
-    # Generate white "spokes" to accentuate pinwheel effect
-    num_spokes = 6
-    spokes = np.mod(H * num_spokes, 1)
-    spokes = np.where(spokes > 0.5, spokes - 1, spokes)
-    spokes = np.abs(spokes)
+    if settings.magnitude_only:
+        H = np.zeros(w.shape)
+        sat = np.zeros(w.shape)
+    else:
+        # Phase determines hue
+        H = Hcomplex(w)
+        # Generate white "spokes" to accentuate pinwheel effect
+        num_spokes = 6
+        spokes = np.mod(H * num_spokes, 1)
+        spokes = np.where(spokes > 0.5, spokes - 1, spokes)
+        spokes = np.abs(spokes)
 
-    # Create "spokes" variable that ranges from 0 to 1, with 1 being max spoke effect
-    spoke_width = 0.067
-    spokes = 1 - spokes / spoke_width
-    # Remove negative values
-    spokes = np.where(spokes < 0, 0, spokes)
+        # Create "spokes" variable that ranges from 0 to 1, with 1 being max spoke effect
+        spoke_width = 0.067
+        spokes = 1 - spokes / spoke_width
+        # Remove negative values
+        spokes = np.where(spokes < 0, 0, spokes)
 
-    # Squared value causes spoke effect to turn on more gradually at edges
-    spokes = spokes * spokes
+        # Squared value causes spoke effect to turn on more gradually at edges
+        spokes = spokes * spokes
 
-    # Saturation becomes zero when spokes == 1
-    sat = (1 - spokes) * max_saturation
-    # Intensity becomes 1 when spokes == 1
-    v = np.where(spokes <= 1, v + (1 - v) * spokes, v)
+        # Saturation becomes zero when spokes == 1
+        sat = (1 - spokes) * max_saturation
+        # Intensity becomes 1 when spokes == 1
+        v = np.where(spokes <= 1, v + (1 - v) * spokes, v)
 
     # V = np.ones(H.shape)
     # the points mapped to infinity are colored with white; hsv_to_rgb(0, 0, 1)=(1, 1, 1)=white
-
     HSV = np.dstack((H, sat, v))
     RGB = hsv_to_rgb(HSV)
     return RGB
@@ -214,7 +219,7 @@ def color_to_HSV(w, max_saturation):  # Classical domain coloring
 # Creates figure, then calls plot_domain with standard options. When done, calculates
 # points per second calculation speed
 def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per unit interval)
-    global settings, mesh_points, points_processed
+    global settings, mesh_points, points_processed, last_result
 
     if not hasattr(settings, 'last_figure'):
         # Last figure never created. May have just launched program.
@@ -222,8 +227,6 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     elif not plt.fignum_exists(settings.last_figure.number):
         # Last figure no longer exists. May have been closed by user.
         settings.REUSE_FIGURE = False
-
-    show_axis = True
 
     if settings.REUSE_FIGURE:
         plt.figure(settings.last_figure.number)
@@ -234,7 +237,7 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
         fig = fig_mgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
-        fig.canvas.mpl_connect('key_press_event', on_keypress)
+#        fig.canvas.mpl_connect('key_press_event', on_keypress)
         settings.last_figure = fig
         fig.canvas.draw()
 
@@ -247,39 +250,70 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         density = density * 4
 
     # Mesh points is calculated here. Prior to calling this, it will be zero.
-    mesh_points = plot_domain(color_to_HSV, f, re, im, title, 1, density, show_axis)
+    last_result, mesh_points = calculate_domain(f, re, im, density)
+
+    # Map colors
+    if mesh_points > 0:
+        map_color(last_result, re, im, title)
+
+
+def map_color(w=None, re=None, im=None, title=None, show_axis=True):
+
+    if w is None:
+        w = last_result
+
+    # Conversion to colormap occurs here
+    if settings.magnitude_only:
+        saturation = 0
+    else:
+        saturation = 1
+
+    # Convert results to color
+    domc = color_to_HSV(w, saturation)
+
+    if title is not None:
+        # Set plot labels
+        plt.xlabel("$\Re(z)$")
+        plt.ylabel("$\Im(z)$")
+        plt.title(title)
+
+    # Update progress bar first, in case UI freezes while showing large image
+    if update_progress_callback is not None:
+        update_progress_callback(100)
+
+    # Results will not be visible until we call canvas.draw()
+    if show_axis:
+        if (re is not None) and (im is not None):
+            plt.imshow(domc, origin="lower",
+                       extent=[re[0], re[1], im[0], im[1]])
+        else:
+            plt.imshow(domc, origin="lower")
+    else:
+        plt.imshow(domc, origin="lower")
+
+        plt.axis('off')
 
     # Draw output.
     # This could take several seconds for large plots, and is excruciatingly slow for 4x oversampled
     # plots. On MacOS, we see a "wait" cursor right away, while Windows takes much longer to show wait cursor.
-    if mesh_points > 0:
+    try:
+        fig_mgr.canvas_plot.draw()
+    #            fig_mgr.canvas_plot.flush_events()   # Doesn't seem to be needed
+    except tkinter.TclError:
+        # If we recalculated but closed the original plot, then there will be a new figure generated
+        # automatically (that will be some default size), and fig_mgr.canvas_plot will not be valid.
+        # We should try to avoid coming here at all costs, as program is likely to crash eventually.
+        print("Previous canvas (fig_mgr.canvas_plot) invalid. Did you close previous window?")
 
-        # Update progress bar first, in case UI freezes while showing large image
-        if update_progress_callback is not None:
-            update_progress_callback(100)
-
-        try:
-            fig_mgr.canvas_plot.draw()
-#            fig_mgr.canvas_plot.flush_events()   # Doesn't seem to be needed
-        except tkinter.TclError:
-            # If we recalculated but closed the original plot, then there will be a new figure generated
-            # automatically (that will be some default size), and fig_mgr.canvas_plot will not be valid.
-            # We should try to avoid coming here at all costs, as program is likely to crash eventually.
-            print("Previous canvas (fig_mgr.canvas_plot) invalid. Did you close previous window?")
-
-            # Get current figure and save it, so that next recalculate will work normally.
-            fig_mgr.fig_plot = plt.gcf()
-            fig_mgr.canvas_plot = fig_mgr.fig_plot.canvas
-
-            # Show figure. Sometimes this crashes even if the fig_plot variable is now correct. Why?
-            # Best to do prechecks to avoid getting here.
-            fig_mgr.fig_plot.show()
+        # Get current figure and save it, so that next recalculate will work normally.
+        fig_mgr.fig_plot = plt.gcf()
+        fig_mgr.canvas_plot = fig_mgr.fig_plot.canvas
 
 
-def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
-                saturation=0.9,  # Saturation
-                density=200,  # Number of points per unit interval
-                show_axis=None):  # Whether to show axis
+last_result = None
+
+
+def calculate_domain(f, re=(-1, 1), im=(-1, 1), density=200):  # density is number of points per unit interval
 
     # Reset local and rm clocks
     t1 = time.time()
@@ -308,29 +342,7 @@ def plot_domain(color_func, f, re=(-1, 1), im=(-1, 1), title='',
         # Sometimes computation is so fast, latency rounds to 0. In that case, don't calculate rate
         print()
 
-    # Convert results to color
-    domc = color_func(w, saturation)
-    plt.xlabel("$\Re(z)$")
-    plt.ylabel("$\Im(z)$")
-    plt.title(title)
-
-    # Results will not be visible until caller calls canvas.draw()
-    if show_axis:
-        plt.imshow(domc, origin="lower",
-                   extent=[re[0], re[1], im[0], im[1]])
-
-    else:
-        plt.imshow(domc, origin="lower")
-        plt.axis('off')
-
-    return np.size(mesh)
-
-
-def on_keypress(event):
-    global qFlag
-    if event.key == "x":
-        qFlag = True
-        print("User pressed x on keyboard")
+    return w, np.size(mesh)
 
 
 # This works whether s is single number or vector
@@ -363,11 +375,9 @@ def riemann_partial_sum(s, partial_sum_limit):
 
 def make_plot(_selection):
 
-    x_center = 0
-    y_center = 0
     rm.quit_computation_flag = False
 
-    if (0 < _selection <= 6) or (_selection == 17) or (_selection == 19):
+    if (0 < _selection <= 6) or (_selection == 17):
         rm.precompute_coeffs()
 
     y_max = settings.plot_y_start + settings.plot_range_y

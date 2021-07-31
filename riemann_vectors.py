@@ -181,10 +181,10 @@ max_speed = 3
 while mg.quit_flag == 0:
 
     if DEMO_MODE:
-        DesiredStepsPerSecond_actual = DesiredStepsPerSecond_base / np.abs(rm.EtaToZetaScale(inputVal))
+        DesiredStepsPerSecond_actual = DesiredStepsPerSecond_base / np.abs(rm.eta_zeta_scale(inputVal))
     else:
         DesiredStepsPerSecond_actual = \
-            DesiredStepsPerSecond_base * mg.get_animation_speed() / np.abs(rm.EtaToZetaScale(inputVal))
+            DesiredStepsPerSecond_base * mg.get_animation_speed() / np.abs(rm.eta_zeta_scale(inputVal))
 
     inputVal = mg.GetPoint(currentPoint)
     outputVal = rm.riemann(inputVal)

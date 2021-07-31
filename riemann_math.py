@@ -12,6 +12,9 @@ computation_progress_callback: typing.Callable = None
 # This can be set by caller, to halt ongoing computation (only works with Riemann)
 quit_computation_flag = False
 
+# True if we compute Riemann zeta using cached exponentials (gives ~10x speedup)
+USE_CACHED_FUNC = True
+
 RIEMANN_ITER_LIMIT = 40  # Default. Can be overridden
 NK2_array = []
 NK1_array = []
@@ -20,11 +23,12 @@ NK1_array = []
 row_count = 0
 
 
-# Precompute table of coefficients for lookup. This reduces Riemann computation time from O(n^2) to O(n)
+# Precompute table of coefficients for lookup using Euler's transformation.
+# This reduces Riemann computation time from O(n^2) to O(n) where n is number of terms
 def precompute_coeffs():
     global NK2_array, NK1_array
     NK2_array = np.zeros(RIEMANN_ITER_LIMIT)
-#    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum using Euler's transformation...", end="")
+    #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
     NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT))
@@ -42,10 +46,8 @@ def precompute_coeffs():
             tmp_sum += NK1_array[n, k]  # comb(n,k) / (2 ** (n+1))
         NK2_array[k] = ((-1) ** k) * tmp_sum
 
-#    print("Done!")
 
-
-def EtaToZetaScale(v):
+def eta_zeta_scale(v):
     # Scale factor converts Dirichlet eta function to Riemann zeta function
     return 1 / (1 - 2 ** (1 - v))
 
@@ -56,6 +58,8 @@ def EtaToZetaScale(v):
 array_zero_split = 0
 elapsed_time = 0
 entry_count = 0
+
+
 #
 # Calculate Riemann zeta function for complex input s.
 #
@@ -95,8 +99,11 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
             print("Precomputed denominators in " + "{:1.4f}".format(delay) + " seconds")
             row_count = 0
             t1 = time.time()
-            # When doing heatmaps, s is initially a list of ndarrays. It will call itself recursively for each list item
+            # When doing heatmaps, s is initially a 2d ndarray, which behaves like a list of 1d ndarrays.
+            # The following will call itself recursively for each item (row), and build a list of 1d arrays
             out = [0.0 if quit_computation_flag else riemann_row(x, do_eta=do_eta) for x in s]
+            # Convert list of 1d arrays into a single 2d ndarray
+            out = np.stack(out)
             elapsed_time = time.time() - t1
             entry_count -= 1
             return out
@@ -214,6 +221,7 @@ pre_computed_func1_phase: np.ndarray  # phase for above, for s < 0
 pre_computed_func2_mag: np.ndarray    # n/a
 pre_computed_func2_phase: np.ndarray  # n/a
 
+
 # Precomputes denominator coefficients, resulting in a roughly 4x speedup
 # Assume mesh is a 2d ndarray, i.e. a list of lists
 def precompute_denom(mesh):
@@ -239,8 +247,8 @@ def precompute_denom(mesh):
     # Delete any previous coefficients
     pre_computed_denom_left_phase.clear()
     pre_computed_denom_right_phase.clear()
-    pre_computed_denom_left_mag = np.empty((RIEMANN_ITER_LIMIT,len(row1_neg_vals)), dtype=np.complex)
-    pre_computed_denom_right_mag = np.empty((RIEMANN_ITER_LIMIT,len(row1_pos_vals)), dtype=np.complex)
+    pre_computed_denom_left_mag = np.empty((RIEMANN_ITER_LIMIT, len(row1_neg_vals)), dtype=np.complex)
+    pre_computed_denom_right_mag = np.empty((RIEMANN_ITER_LIMIT, len(row1_pos_vals)), dtype=np.complex)
 
     for k in range(0, RIEMANN_ITER_LIMIT):
         # Denominator magnitudes as a function of x. This array is sorted by k, then column
@@ -252,12 +260,13 @@ def precompute_denom(mesh):
         # Denominator phase is a function of y (row). This array is sorted by row, then k
         col1[row] = mesh[row][0]
         s = col1[row]
-        pre_computed_denom_right_phase.append(np.power(np.linspace(1,RIEMANN_ITER_LIMIT,RIEMANN_ITER_LIMIT), -1j * np.imag(s)))
-        pre_computed_denom_left_phase.append(np.power(np.linspace(1,RIEMANN_ITER_LIMIT,RIEMANN_ITER_LIMIT), -1j * np.imag(1-s)))
+        k_list = np.linspace(1, RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT)
+        pre_computed_denom_right_phase.append(np.power(k_list, -1j * np.imag(s)))
+        pre_computed_denom_left_phase.append(np.power(k_list, -1j * np.imag(1 - s)))
 
     # Left half plane [(2*pi) ^ s] / pi
-    pre_computed_func1_mag = np.power(2 * np.pi, np.real(row1_neg_vals)) / np.pi    # Magnitude is function of x
-    pre_computed_func1_phase = np.power(2 * np.pi, 1j * np.imag(col1))        # Phase is function of y
+    pre_computed_func1_mag = np.power(2 * np.pi, np.real(row1_neg_vals)) / np.pi  # Magnitude is function of x
+    pre_computed_func1_phase = np.power(2 * np.pi, 1j * np.imag(col1))  # Phase is function of y
 
 
 #
@@ -312,7 +321,7 @@ def riemann_row_with_cache(s,
         if left_half_plane:
             try:
                 cum_sum = np.dot(np.multiply(NK2_array, pre_computed_denom_left_phase[row_num]),
-                             pre_computed_denom_left_mag)   # Dot product is much faster than loop
+                                 pre_computed_denom_left_mag)  # Dot product is much faster than loop
             except:
                 print("Error during riemann_arrays. Do you have two concurrent operations underway?")
                 quit_computation_flag = True
@@ -365,7 +374,8 @@ def riemann_symmetric(s):
     return r * gamma(s / 2) * (np.pi ** (-s / 2))
 
 
-def RiemannGamma(s):
+# Not currently used
+def riemann_gamma(s):
     return riemann(s) * gamma(s / 2)
 
 
@@ -374,7 +384,10 @@ def gamma_with_progress(s):
     global row_count
 
     if s.ndim == 2:
-        return [0.0 if quit_computation_flag else gamma_with_progress(x) for x in s]
+        # This will convert 2d ndarray into list of 1d ndarrays
+        out = [0.0 if quit_computation_flag else gamma_with_progress(x) for x in s]
+        # Convert back to single 2d ndarray
+        return np.stack(out)
 
     # Now we have 1D vector
     row_count += 1
