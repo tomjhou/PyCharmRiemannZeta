@@ -78,50 +78,38 @@ entry_count = 0
 # for Re(s) < 0.
 #
 def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
+
     global row_count, array_zero_split, elapsed_time, entry_count
 
-    if s.ndim == 2:
-        if entry_count > 1:
-            # Prevent this from running more than once concurrently
-            return 0
-
-        entry_count += 1
-
-        t1 = time.time()
-        precompute_denom(s)
-        delay = time.time() - t1
-        print("Precomputed denominators in " + "{:1.4f}".format(delay) + " seconds")
-        row_count = 0
-        t1 = time.time()
-        # When doing heatmaps, s is initially a list of ndarrays. It will call itself recursively for each list item
-        out = [0.0 if quit_computation_flag else riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
-        elapsed_time = time.time() - t1
-        entry_count -= 1
-        return out
-
-    # Now we have 1D vector or single value
     if np.size(s) > 1:
-        # We have 1D vector. Update progress bar, then call Riemann for individual values
-        row_count += 1
+        if s.ndim == 2:
+            if entry_count > 1:
+                # Prevent this from running more than once concurrently
+                return 0
 
-        if np.mod(row_count, 50) == 0:
-            # Update progress bar every 50 rows
-            if computation_progress_callback is not None:
-                computation_progress_callback(np.size(s) * 50)
+            entry_count += 1
 
-        # RiemannArray requires elements to either be all negative or all non-negative. So we split s into two arrays.
-        neg_array = s[0:array_zero_split]
-        pos_array = s[array_zero_split:len(s)]
-
-#            a1 = riemann_array(neg_array, row_count - 1, do_eta=do_eta)
-#            a2 = riemann_array(pos_array, row_count - 1, do_eta=do_eta)
-        return np.concatenate((riemann_array(neg_array, row_count - 1, do_eta=do_eta),
-                              riemann_array(pos_array, row_count - 1, do_eta=do_eta)))
+            t1 = time.time()
+            precompute_denom(s)
+            delay = time.time() - t1
+            print("Precomputed denominators in " + "{:1.4f}".format(delay) + " seconds")
+            row_count = 0
+            t1 = time.time()
+            # When doing heatmaps, s is initially a list of ndarrays. It will call itself recursively for each list item
+            out = [0.0 if quit_computation_flag else riemann_row(x, do_eta=do_eta) for x in s]
+            elapsed_time = time.time() - t1
+            entry_count -= 1
+            return out
 
     #
-    # Single value. Heatmap calculations never come here, since we used vectorized version instead.
+    # Either have single value, or 1d array. Use slow, non-vectorized, method.
+    # Heatmap calculations never come here, since we used vectorized version instead.
     #
-    if s == 1.0:
+    if np.size(s) > 1.0:
+        return riemann_row_with_cache(s, -1, do_eta, False, False)
+#        return [riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
+
+    if np.size(s) == 1 and s == 1.0:
         # Calculation blows up at 1.0, so don't bother to calculate
         if use_zero_for_nan:
             # Do this to avoid warnings.
@@ -150,6 +138,9 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     else:
         # Scale factor converts Dirichlet eta function to Riemann zeta function
         scale1 = 1 / (1 - 2 ** (1 - s))
+
+    if len(NK2_array) != RIEMANN_ITER_LIMIT:
+        precompute_coeffs()
 
     if store_intermediates or get_array_size:
 
@@ -188,6 +179,30 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
             return cum_sum, partial_sum_index
 
     return cum_sum
+
+
+# Handles one row of matrix. If inputs have both positive and negative real portions, will
+# split it into two separate arrays.
+def riemann_row(s, do_eta):
+
+    global row_count, array_zero_split
+
+    # We have 1D vector. Update progress bar, then call Riemann for individual values
+    row_count += 1
+
+    if np.mod(row_count, 50) == 0:
+        # Update progress bar every 50 rows
+        if computation_progress_callback is not None:
+            computation_progress_callback(np.size(s) * 50)
+
+    # RiemannArray requires elements to either be all negative or all non-negative. So we split s into two arrays.
+    neg_array = s[0:array_zero_split]
+    pos_array = s[array_zero_split:len(s)]
+
+    #            a1 = riemann_array(neg_array, row_count - 1, do_eta=do_eta)
+    #            a2 = riemann_array(pos_array, row_count - 1, do_eta=do_eta)
+    return np.concatenate((riemann_row_with_cache(neg_array, row_count - 1, do_eta=do_eta),
+                           riemann_row_with_cache(pos_array, row_count - 1, do_eta=do_eta)))
 
 
 pre_computed_denom_right_mag: np.ndarray   # (k+1)^(Re(-s))
@@ -245,17 +260,20 @@ def precompute_denom(mesh):
     pre_computed_func1_phase = np.power(2 * np.pi, 1j * np.imag(col1))        # Phase is function of y
 
 
-USE_CACHED_FUNC = True
 #
-# Calculate Riemann zeta function for a 1D ndarray (i.e. vector)
+# Calculate Riemann zeta function for a 1D ndarray (i.e. vector) using vectorized operations
+# and pre-computed denominator array.
+# Input must meet the following criteria:
 #
-# Assumes elements are all non-negative, or all negative (in the latter case, will use functional equation
-# to assure convergence) and are in the same order as in the pre_computed denominator arrays, i.e. that they
-# are consecutive points in a single row of a mesh_grid
-def riemann_array(s,
-                  row_num,       # Which row of mesh grid? 0 is bottom
-                  do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
-                  left_half_plane=False):  # True if called RECURSIVELY for Re(s) < 0. False otherwise, even if Re(s)<0
+# 1. All elements are non-negative, or all negative (i.e. can't mix)
+# 2. All elements are in same order as in the pre_computed denominator arrays, i.e.
+#    are consecutive points in a single row of a mesh_grid
+#
+def riemann_row_with_cache(s,
+                           row_num,  # Which row of mesh grid? 0 is bottom
+                           do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
+                           left_half_plane=False,  # True if called RECURSIVELY for Re(s) < 0. False otherwise, even if Re(s)<0
+                           USE_CACHED_FUNC=True):
 
     global quit_computation_flag
 
@@ -268,7 +286,7 @@ def riemann_array(s,
         if do_eta:
             # Must set left_half_plane=True because we have replaced s with 1 - s, so arg values are now
             # all positive
-            return -2 * s * riemann_array(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
+            return -2 * s * riemann_row_with_cache(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
                    * gamma(- s) * np.sin(-s * np.pi / 2) * np.power(np.pi, s - 1) \
                    * (1 - np.power(2, s - 1)) / (1 - np.power(2, s))
         else:
@@ -278,14 +296,14 @@ def riemann_array(s,
                 # Now have ~2M samples/second on home office computer
                 # Theoretically we could also cache sin since sin(a+bi) = sinacoshb + icosasinhb, but
                 # that requires generating 4 more pre-calculated arrays, which feels like a pain
-                return riemann_array(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
+                return riemann_row_with_cache(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
                        * gamma(1 - s) * np.sin(s * np.pi / 2) \
                        * pre_computed_func1_mag * pre_computed_func1_phase[row_num]
             else:
                 # Old method is foolproof, and only slightly slower
-                return riemann_array(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
+                return riemann_row_with_cache(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
                        * gamma(1 - s) * np.sin(s * np.pi / 2) \
-                       * np.power(np.pi, s - 1)\
+                       * np.power(np.pi, s - 1) \
                        * np.power(2, s)     # This can be combined with above exponential. Keep this way for readability
 
     # We are in zone where sum will converge.
@@ -323,7 +341,7 @@ def riemann_array(s,
         # We still benefit from vectorized operations, which gave 100x improvement.
         cum_sum = [0 + 0j] * len(s)
         for k in range(0, RIEMANN_ITER_LIMIT):
-            cum_sum += NK2_array[k] * np.power(k + 1, - s)   # Calculate the denominator the traditional (4x slower) way.
+            cum_sum += NK2_array[k] * np.power(k + 1, -s)   # Calculate the denominator the traditional (4x slower) way.
 
         if do_eta:
             return cum_sum
@@ -335,7 +353,7 @@ def riemann_array(s,
 #
 # When multiplied by gamma(s/2) * pi ^(-s/2), the result has 180-deg rotational symmetry around s = 0.5 + 0j
 #
-def RiemannSymmetric(s):
+def riemann_symmetric(s):
     r = riemann(s)
     if quit_computation_flag:
         # If we were interrupted, we will have a "ragged" list, in which some elements are a single "0",

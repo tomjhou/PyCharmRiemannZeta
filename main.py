@@ -93,19 +93,10 @@ def do_heatmap():
         # User has clicked on spinner arrows
         val = win_heatmap.spin1.get()
         float_val = float(val)
-        rh.settings.plot_range = float_val
+        rh.settings.plot_range_y = float_val
         if rh.settings.keep_square.get():
             win_heatmap.spin2.set(val)
             rh.settings.plot_range_x = float_val
-
-    def do_spin2():
-        # User has clicked on spinner arrows
-        val = win_heatmap.spin2.get()
-        float_val = float(val)
-        rh.settings.plot_range_x = float_val
-        if rh.settings.keep_square.get():
-            win_heatmap.spin1.set(val)
-            rh.settings.plot_range = float_val
 
     # Attempting to make a generic updater ... this does not work because range1, range2 are floats, which are immutable
     # and so changes in here won't propagate out
@@ -125,14 +116,23 @@ def do_heatmap():
         # User has moved focus out of spinner, or hit enter key
         val = win_heatmap.spin1.get()
         float_val = float(val)
-        if rh.settings.plot_range != float_val:
-            rh.settings.plot_range = float_val
+        if rh.settings.plot_range_y != float_val:
+            rh.settings.plot_range_y = float_val
             # Only update if it has changed.
             if rh.settings.keep_square.get():
                 rh.settings.plot_range_x = float_val
                 win_heatmap.spin2.set(val)
             if rh.settings.auto_recalculate:
                 do_recalculate()
+
+    def do_spin2():
+        # User has clicked on spinner arrows
+        val = win_heatmap.spin2.get()
+        float_val = float(val)
+        rh.settings.plot_range_x = float_val
+        if rh.settings.keep_square.get():
+            win_heatmap.spin1.set(val)
+            rh.settings.plot_range_y = float_val
 
     def do_spin2_event(_event):
         # User has moved focus out of spinner, or hit enter key
@@ -142,8 +142,24 @@ def do_heatmap():
             rh.settings.plot_range_x = float_val
             # Only update if it has changed.
             if rh.settings.keep_square.get():
-                rh.settings.plot_range = float_val
+                rh.settings.plot_range_y = float_val
                 win_heatmap.spin1.set(val)
+            if rh.settings.auto_recalculate:
+                do_recalculate()
+
+    def do_spin3():
+        # User has clicked on spinner arrows
+        val = win_heatmap.spin3.get()
+        float_val = float(val)
+        rh.settings.plot_y_start = float_val
+
+    def do_spin3_event(_event):
+        # User has moved focus out of spinner, or hit enter key
+        val = win_heatmap.spin3.get()
+        float_val = float(val)
+        if rh.settings.plot_y_start != float_val:
+            rh.settings.plot_y_start = float_val
+            # Only update if it has changed.
             if rh.settings.auto_recalculate:
                 do_recalculate()
 
@@ -229,9 +245,9 @@ def do_heatmap():
             self.progress = ttk.Progressbar(frame_top_controls, orient="horizontal", length=100, mode="determinate")
             self.progress.pack(fill=tk.X)
 
-            # Frame for spinner and accompanying label
+            # Frame for plot range spinners and accompanying label
             self.frame_spinner = ttk.Frame(frame_top_controls)
-            self.frame_spinner.pack(fill=tk.X)
+            self.frame_spinner.pack(fill=tk.X, pady=5)
 
             # spinboxes for plot range
             #
@@ -269,6 +285,16 @@ def do_heatmap():
             self.spin1.bind('<FocusOut>', do_spin1_event)
             #            self.spin1.bind('<FocusIn>', do_spin1_event)
 
+            self.label_spinner = ttk.Label(self.frame_spinner, text="  Plot y start: ")
+            self.label_spinner.pack(side=tk.LEFT)
+            self.spin3 = ttk.Spinbox(self.frame_spinner, from_=1, to=100, command=do_spin3, width=5)
+            self.spin3.pack(side=tk.LEFT)
+
+            # Need to bind keys or else value doesn't update
+            self.spin3.bind('<Return>', do_spin3_event)
+            self.spin3.bind('<FocusOut>', do_spin3_event)
+            #            self.spin1.bind('<FocusIn>', do_spin1_event)
+
             # Aspect ratio checkbox
             rh.settings.keep_square = tk.IntVar(win)
             self.checkbox_keep_square = ttk.Checkbutton(self.frame_spinner,
@@ -279,10 +305,11 @@ def do_heatmap():
 
 
             #
-            # Row of check boxes for plot range
+            # Row of check boxes controlling critical strip plotting, positive y plotting,
+            # and auto-recalculation
             #
             self.frame_checks_plot = tk.Frame(frame_top_controls)
-            self.frame_checks_plot.pack(fill=tk.X)
+            self.frame_checks_plot.pack(fill=tk.X, pady = 5)
 
             # Narrow x only
             self.var_critical_strip = tk.IntVar(win)
@@ -391,10 +418,9 @@ def do_heatmap():
             self.sliderA.set(rh.settings.parameterA)
             self.sliderB.set(rh.settings.parameterB)
 
-#            rh.settings.plot_range.set(str(20))
-#            rh.settings.plot_range_x.set(str(20))
-            self.spin1.set(rh.settings.plot_range)
+            self.spin1.set(rh.settings.plot_range_y)
             self.spin2.set(rh.settings.plot_range_x)
+            self.spin3.set(rh.settings.plot_y_start)
 
     # Note that the following will close a temporary figure, causing tk.mainloop to quit.
     rh.fig_mgr = mfm.MplFigureManager()
@@ -419,6 +445,9 @@ def do_heatmap():
     # root.after_idle(root.attributes, '-topmost', False)
     # root.mainloop()
 
+def do_critical_line():
+    import TestCriticalLinePlot
+
 
 def do_exit():
     global quit_flag
@@ -434,6 +463,7 @@ frame1.pack(side=tk.TOP, fill=tk.BOTH, padx=20, pady=20)
 ttk.Label(frame1, text="Choose program").pack(fill=tk.X, pady=5)
 ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X, padx=10, pady=5)
 ttk.Button(frame1, text="Heatmaps", command=do_heatmap).pack(fill=tk.X, padx=10, pady=5)
+ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X, padx=10, pady=5)
 ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5)
 
 root.geometry("+5+5")   # Place in very top left corner of screen

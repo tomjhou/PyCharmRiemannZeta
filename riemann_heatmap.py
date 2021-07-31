@@ -44,8 +44,9 @@ class SettingsClass:
         self.oversample = False
         self.parameterA = 1.0        # Parameter for formula
         self.parameterB = 0.0
-        self.plot_range = 20.0
+        self.plot_range_y = 20.0
         self.plot_range_x = 20.0
+        self.plot_y_start = 0
 
 
 settings = SettingsClass()
@@ -369,14 +370,15 @@ def make_plot(_selection):
     if (0 < _selection <= 6) or (_selection == 17) or (_selection == 19):
         rm.precompute_coeffs()
 
-    y_max = settings.plot_range
+    y_max = settings.plot_y_start + settings.plot_range_y
     x_max = settings.plot_range_x
+
     if settings.top_only:
-        y_min = 0
+        y_min = settings.plot_y_start
         x_max /= 2
         x_min = -x_max
     else:
-        y_min = -y_max
+        y_min = settings.plot_y_start - settings.plot_range_y
         x_min = -x_max
 
     if settings.critical_strip:
@@ -397,7 +399,7 @@ def make_plot(_selection):
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
         # Symmetric Riemann function
-        plot_domain2(lambda z: rm.RiemannSymmetric(z),
+        plot_domain2(lambda z: rm.riemann_symmetric(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 8:
