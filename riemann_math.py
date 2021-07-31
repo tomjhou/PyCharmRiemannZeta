@@ -300,10 +300,10 @@ def riemann_row_with_cache(s,
                    * (1 - np.power(2, s - 1)) / (1 - np.power(2, s))
         else:
             if USE_CACHED_FUNC:
-                # Combine and cached exponential function 2^s * pi ^ (s-1) to speed up.
+                # Use combined+cached exponential function 2^s * pi ^ (s-1) to speed up.
                 # Gives another 30-40% improvement when added on top of all earlier optimizations!
                 # Now have ~2M samples/second on home office computer
-                # Theoretically we could also cache sin since sin(a+bi) = sinacoshb + icosasinhb, but
+                # Theoretically we could also cache sin since sin(a+bi) = sin(a)cosh(b) + i*cos(a)sinh(b), but
                 # that requires generating 4 more pre-calculated arrays, which feels like a pain
                 return riemann_row_with_cache(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
                        * gamma(1 - s) * np.sin(s * np.pi / 2) \
@@ -333,6 +333,7 @@ def riemann_row_with_cache(s,
             if do_eta:
                 return cum_sum
             else:
+                # This will generate divide-by-zero error at s = 1
                 return cum_sum / (1 - 2 * pre_computed_denom_left_mag[1] * pre_computed_denom_left_phase[row_num][1])
         else:
             cum_sum = np.dot(np.multiply(NK2_array, pre_computed_denom_right_phase[row_num]),

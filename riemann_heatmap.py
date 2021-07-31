@@ -15,16 +15,42 @@ from scipy.special import gamma
 import time
 
 import riemann_math as rm
-
 import mpl_figure_manager as mfm
-
-print('Done importing libraries')
 
 mesh_points = 0  # Number of mesh points. Used to convert progress calls to percent
 update_progress_callback: typing.Callable[[float], None]  # = None
 
 # Counts number of points processed during long computations. Used to update progress bar
 points_processed = 0
+
+# Used when remapping colors but not otherwise recalculating function
+last_result = None       # Large array holding result of previous function evaluation.
+image_object = None      # matplotlib object that can be updated when remapping colors
+
+mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
+# mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
+
+fig_mgr: mfm.MplFigureManager   # = None
+
+# New button-based GUI selection method
+plot_list = {
+    2: "Riemann",
+    5: "Symmetric Riemann",
+    0: "Pinwheel",
+    8: "Gamma(z)",
+    10: "sin(az) + b",
+    11: "cos(az) + b",
+    12: "Exponential (a+bi)^z",
+    13: "Power z^(a+bi)",
+    15: "Riemann partial sum",
+    16: "1 - 2 ^ (1-z)",
+    17: "Dirichlet eta",
+    18: "gamma(z/2) * pi^(-z/2)",
+    19: "gamma(z) * gamma(1-z)"
+}
+
+if __name__ == "__main__":
+    print("\nPlease run main.py instead of this file. Thank you!!")
 
 
 class SettingsClass:
@@ -81,32 +107,6 @@ def update_computation_status(increment=1):
     else:
         if np.mod(points_processed, 20000) == 0:
             print("   \r" + str(int(points_processed / 1000)) + "k ", end='')  # Print status every 10k samples
-
-
-mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
-# mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
-
-fig_mgr: mfm.MplFigureManager   # = None
-
-# New button-based GUI selection method
-plot_list = {
-    2: "Riemann",
-    5: "Symmetric Riemann",
-    0: "Pinwheel",
-    8: "Gamma",
-    10: "sin(az) + b",
-    11: "cos(az) + b",
-    12: "Exponential (a+bi)^z",
-    13: "Power z^(a+bi)",
-    15: "Riemann partial sum",
-    16: "1 - 2 ^ (1-z)",
-    17: "Dirichlet eta",
-    18: "gamma(z/2) * pi^(-z/2)"
-}
-
-
-if __name__ == "__main__":
-    print("\nPlease run main.py instead of this file. Thank you!!")
 
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
@@ -249,15 +249,18 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     if settings.oversample:
         density = density * 4
 
-    # Mesh points is calculated here. Prior to calling this, it will be zero.
+    # Create mesh and calculate function at each point
     last_result, mesh_points = calculate_domain(f, re, im, density)
 
-    # Map colors
+    # Map result to colors and plot
     if mesh_points > 0:
         map_color(last_result, re, im, title)
 
 
+# Convert complex numbers to color and display on screen
 def map_color(w=None, re=None, im=None, title=None, show_axis=True):
+
+    global image_object
 
     if w is None:
         w = last_result
@@ -284,10 +287,12 @@ def map_color(w=None, re=None, im=None, title=None, show_axis=True):
     # Results will not be visible until we call canvas.draw()
     if show_axis:
         if (re is not None) and (im is not None):
-            plt.imshow(domc, origin="lower",
+            image_object = plt.imshow(domc, origin="lower",
                        extent=[re[0], re[1], im[0], im[1]])
         else:
-            plt.imshow(domc, origin="lower")
+            # No axis values available. Just show image.
+            # Unfortunately, this causes axis labels to reset to something generic.
+            image_object.set_data(domc)  # , origin="lower")
     else:
         plt.imshow(domc, origin="lower")
 
@@ -308,9 +313,6 @@ def map_color(w=None, re=None, im=None, title=None, show_axis=True):
         # Get current figure and save it, so that next recalculate will work normally.
         fig_mgr.fig_plot = plt.gcf()
         fig_mgr.canvas_plot = fig_mgr.fig_plot.canvas
-
-
-last_result = None
 
 
 def calculate_domain(f, re=(-1, 1), im=(-1, 1), density=200):  # density is number of points per unit interval
@@ -413,7 +415,7 @@ def make_plot(_selection):
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 8:
-        # Gamma(s/2) function
+        # Gamma(s) function
         plot_domain2(lambda z: rm.gamma_with_progress(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$)')
@@ -473,6 +475,11 @@ def make_plot(_selection):
         plot_domain2(lambda z: np.power(np.pi, -z/2) * gamma(z/2),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$/2)*pi^(-$z$/2)')
+    elif _selection == 19:
+        #  gamma(s) * gamma(1-s)
+        plot_domain2(lambda z: gamma(z) * gamma(1-z),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='gamma($z$)*gamma(1-$z$)')
 
     rm.quit_computation_flag = False
 
