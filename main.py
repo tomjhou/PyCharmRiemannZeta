@@ -259,7 +259,7 @@ def do_heatmap():
             self.label2.pack()
 
             # slider for iterations
-            self.slider_iter = ttk.Scale(frame_top_controls, from_=20, to=100, command=do_iter_slider)
+            self.slider_iter = ttk.Scale(frame_top_controls, from_=20, to=200, command=do_iter_slider)
             self.slider_iter.bind("<ButtonRelease-1>", do_slider_iter_button_release)
             self.slider_iter.pack(fill=tk.X)
 
