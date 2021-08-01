@@ -35,18 +35,22 @@ fig_mgr: mfm.MplFigureManager   # = None
 # New button-based GUI selection method
 plot_list = {
     2: "Riemann",
+    3: "log Riemann",
     5: "Symmetric Riemann",
-    0: "Pinwheel",
+    6: "log symmetric riemann",
+    0: "Pinwheel=z",
     8: "Gamma(z)",
     10: "sin(az) + b",
     11: "cos(az) + b",
     12: "Exponential (a+bi)^z",
     13: "Power z^(a+bi)",
+    14: "log(z)",
     15: "Riemann partial sum",
-    16: "1 - 2 ^ (1-z)",
+    16: "1 - 2^(1-z)",
     17: "Dirichlet eta",
     18: "gamma(z/2) * pi^(-z/2)",
-    19: "gamma(z) * gamma(1-z)"
+    19: "gamma(z) * gamma(1-z) = pi/sin(pi*z)",
+    20: "gamma(z) * gamma(conj(z))=Real"
 }
 
 if __name__ == "__main__":
@@ -84,6 +88,11 @@ class SettingsClass:
 
 
 settings = SettingsClass()
+
+
+def make_figure_manager(win):
+    global fig_mgr
+    fig_mgr = mfm.MplFigureManager(win)
 
 
 def make_fig_plot(_event, _id):
@@ -409,11 +418,21 @@ def make_plot(_selection):
         plot_domain2(lambda z: rm.riemann(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+    elif _selection == 3:
+        # Standard Riemann function
+        plot_domain2(lambda z: rm.log_riemann(z),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
         # Symmetric Riemann function
         plot_domain2(lambda z: rm.riemann_symmetric(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+    elif _selection == 6:
+            plot_domain2(lambda z: rm.riemann_symmetric(z, True),
+                         re=[x_min, x_max], im=[y_min, y_max],
+                         title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+
     elif _selection == 8:
         # Gamma(s) function
         plot_domain2(lambda z: rm.gamma_with_progress(z),
@@ -439,6 +458,11 @@ def make_plot(_selection):
         plot_domain2(lambda z: np.power(z, a - 1j*b),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='$z$^(' + '{:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j)')
+    elif _selection == 14:
+        # complex power function
+        plot_domain2(lambda z: np.log(z),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='$log(z)$')
     elif _selection == 15:
         # Partial summation of Dirichlet eta function (alternating Riemann)
         # This sum converges for Re(s) > 0
@@ -480,6 +504,18 @@ def make_plot(_selection):
         plot_domain2(lambda z: gamma(z) * gamma(1-z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$)*gamma(1-$z$)')
+    elif _selection == 20:
+        #  gamma(s) * gamma(conj(s))
+        # Force plotting with magnitude only setting
+
+        old_val = settings.magnitude_only
+        settings.magnitude_only = 1
+        print("Will plot with magnitude_only setting on, since all values are real")
+        plot_domain2(lambda z: gamma(z) * gamma(np.conj(z)),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='gamma($z$)*gamma($\\bar{z}$)')
+
+        settings.magnitude_only = old_val
 
     rm.quit_computation_flag = False
 

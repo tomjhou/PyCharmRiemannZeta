@@ -5,22 +5,24 @@ import matplotlib as mpl
 
 class MplFigureManager:
 
-    def __init__(self):
+    def __init__(self, root):
 
         self.backend = mpl.get_backend()
 
-        fig_tmp = plt.figure()
-        self.dpi = fig_tmp.dpi
-        window = plt.get_current_fig_manager().window
+#        fig_tmp = plt.figure()
+#        self.dpi = fig_tmp.dpi
+#        window = plt.get_current_fig_manager().window
 
         if self.backend == "Qt5Agg":
+            pass
             # Hack to get screen size. Temporarily make a full-screen window, get size, then later set "real" size
-            window.showMaximized()  # Make fullscreen
-            plt.pause(.001)  # Draw items to screen so we can get size
-            screen_x, screen_y = fig_tmp.get_size_inches() * self.dpi  # size in pixels
+#            window.showMaximized()  # Make fullscreen
+#            plt.pause(.001)  # Draw items to screen so we can get size
+#            screen_x, screen_y = fig_tmp.get_size_inches() * self.dpi  # size in pixels
         elif self.backend == "TkAgg":
-            screen_x = window.winfo_screenwidth()
-            screen_y = window.winfo_screenheight()
+            screen_x = root.winfo_screenwidth()
+            screen_y = root.winfo_screenheight()
+            self.dpi = root.winfo_fpixels('1i')
 #            screen_x, screen_y = window.wm_maxsize()  # This works for TkAgg, but not Qt5Agg
         else:
             print("Unsupported backend " + self.backend)
