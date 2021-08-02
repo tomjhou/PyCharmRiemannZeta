@@ -4,8 +4,6 @@ from functools import partial, partialmethod
 
 import riemann_heatmap as rh
 
-root: tk.Tk
-
 
 def do_square():
     # diagnostic function only. Because we have a backing variable tracking this, we don't need to handle anything
@@ -332,7 +330,7 @@ class WinHeatMap:
     def do_slider_iter_button_release(self, _event):
         # User has let go of button. Now we can really update things
 
-        # Convet string to int, then back to string
+        # Convert string to int, then back to string
         val_str = self.slider_iter.get()
         val_int = int(float(val_str))
         val_str = str(val_int)
@@ -527,6 +525,14 @@ class WinHeatMap:
         self.set_initial_values()
 
 
+def do_main():
+    root = tk.Tk()
+    win = WinHeatMap(root)
+    win.make_heatmap_gui()
+    # Place just below earlier window
+    root.geometry("+5+250")
+    root.mainloop()
+
 # Make this topmost. This is needed if there is text entry beforehand, which sends focus away from Tkinter objects
 # root.lift()
 # root.attributes('-topmost', True)
@@ -534,10 +540,5 @@ class WinHeatMap:
 # root.mainloop()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    win = WinHeatMap(root)
-    win.make_heatmap_gui()
-    # Place just below earlier window
-    root.geometry("+5+250")
-    root.mainloop()
+    do_main()
 

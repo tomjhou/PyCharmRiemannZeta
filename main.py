@@ -13,8 +13,6 @@ def do_vectors():
 
 def do_heatmap():
 
-    import mpl_figure_manager as mfm
-
     win = tk.Toplevel(root)
     win_heatmap = WinHeatMap(win)
     win_heatmap.make_heatmap_gui()

@@ -35,9 +35,9 @@ fig_mgr: mfm.MplFigureManager   # = None
 # New button-based GUI selection method
 plot_list = {
     2: "Riemann",
-    3: "log Riemann",
+    3: "ln(Riemann)",
     5: "Symmetric Riemann",
-    6: "log symmetric riemann",
+    6: "ln(symmetric riemann)",
     0: "Pinwheel=z",
     8: "Gamma(z)",
     10: "sin(az) + b",

@@ -26,7 +26,6 @@ row_count = 0
 # Precompute table of coefficients for lookup using Euler's transformation.
 # This reduces Riemann computation time from O(n^2) to O(n) where n is number of terms
 def precompute_coeffs():
-
     global NK2_array, NK1_array
 
     if len(NK2_array) == RIEMANN_ITER_LIMIT:
@@ -88,7 +87,6 @@ entry_count = 0
 # for Re(s) < 0.
 #
 def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
-
     global row_count, array_zero_split, elapsed_time, entry_count
 
     if np.size(s) > 1:
@@ -124,7 +122,7 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     if np.size(s) > 1.0:
         # Handle 1d array using vectorized operations (but without cached denominators)
         return riemann_row_vectorized(s, -1, do_eta, False, False)
-#        return [riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
+    #        return [riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
 
     # If we are here, we are computing for a single value. Use slow method, without vectorization
     # or cached denominators
@@ -139,11 +137,11 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     if np.real(s) < 0:
         # Use functional equation
         if do_eta:
-            return -s * riemann(1 - s, do_eta=do_eta)\
-                   * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1))\
+            return -s * riemann(1 - s, do_eta=do_eta) \
+                   * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) \
                    * (1 - 2 ** (s - 1)) / (1 - 2 ** s)
         else:
-            return riemann(1 - s, do_eta=do_eta)\
+            return riemann(1 - s, do_eta=do_eta) \
                    * gamma(1 - s) * np.sin(s * np.pi / 2) * (np.pi ** (s - 1)) * (2 ** s)
 
     cum_sum = 0 + 0j
@@ -203,7 +201,6 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
 # Handles one row of 2d matrix. If inputs have both positive and negative real portions, will
 # split into two separate arrays.
 def riemann_row(s, do_eta, USE_CACHED_DENOM=True):
-
     global row_count, array_zero_split
 
     # We have 1D vector. Update progress bar, then call Riemann for individual values
@@ -226,13 +223,13 @@ def riemann_row(s, do_eta, USE_CACHED_DENOM=True):
                                                   do_eta=do_eta, USE_CACHED_FUNC=USE_CACHED_DENOM)))
 
 
-pre_computed_denom_right_mag: np.ndarray   # (k+1)^(Re(-s))
-pre_computed_denom_left_mag: np.ndarray    # (k+1)^(1j*Im(-s))
-pre_computed_denom_right_phase = []   # (k+1)^(Re(-(1-s)))
-pre_computed_denom_left_phase = []    # (k+1)^(1j*Im(-(1-s)))
-pre_computed_func1_mag: np.ndarray    # (2*pi)^Re(s) / pi for s < 0
+pre_computed_denom_right_mag: np.ndarray  # (k+1)^(Re(-s))
+pre_computed_denom_left_mag: np.ndarray  # (k+1)^(1j*Im(-s))
+pre_computed_denom_right_phase = []  # (k+1)^(Re(-(1-s)))
+pre_computed_denom_left_phase = []  # (k+1)^(1j*Im(-(1-s)))
+pre_computed_func1_mag: np.ndarray  # (2*pi)^Re(s) / pi for s < 0
 pre_computed_func1_phase: np.ndarray  # phase for above, for s < 0
-pre_computed_func2_mag: np.ndarray    # n/a
+pre_computed_func2_mag: np.ndarray  # n/a
 pre_computed_func2_phase: np.ndarray  # n/a
 
 
@@ -240,8 +237,8 @@ pre_computed_func2_phase: np.ndarray  # n/a
 # Assume mesh is a 2d ndarray, i.e. a list of lists
 def precompute_denom(mesh):
     global array_zero_split, \
-        pre_computed_func1_mag, pre_computed_func1_phase,\
-        pre_computed_func2_mag, pre_computed_func2_phase,\
+        pre_computed_func1_mag, pre_computed_func1_phase, \
+        pre_computed_func2_mag, pre_computed_func2_phase, \
         pre_computed_denom_left_mag, pre_computed_denom_right_mag
 
     # Computes (k + 1) ^ -s for all s in grid.
@@ -296,9 +293,9 @@ def precompute_denom(mesh):
 def riemann_row_vectorized(s,
                            row_num,  # Which row of mesh grid? 0 is bottom
                            do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
-                           left_half_plane=False,  # True if called RECURSIVELY for Re(s) < 0. False otherwise, even if Re(s)<0
+                           left_half_plane=False,
+                           # True if called RECURSIVELY for Re(s) < 0. False otherwise, even if Re(s)<0
                            USE_CACHED_FUNC=True):
-
     global quit_computation_flag
 
     if len(s) == 0:
@@ -311,7 +308,7 @@ def riemann_row_vectorized(s,
             # Must set left_half_plane=True because we have replaced s with 1 - s, so arg values are now
             # all positive
             return -2 * s * riemann_row_vectorized(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
-                   * gamma(- s) * np.sin(-s * np.pi / 2)\
+                   * gamma(- s) * np.sin(-s * np.pi / 2) \
                    * np.power(np.pi, s - 1) \
                    * (1 - np.power(2, s - 1)) / (1 - np.power(2, s))
         else:
@@ -329,7 +326,7 @@ def riemann_row_vectorized(s,
                 return riemann_row_vectorized(1 - s, row_num, do_eta=do_eta, left_half_plane=True) \
                        * gamma(1 - s) * np.sin(s * np.pi / 2) \
                        * np.power(np.pi, s - 1) \
-                       * np.power(2, s)     # This can be combined with above exponential. Keep this way for readability
+                       * np.power(2, s)  # This can be combined with above exponential. Keep this way for readability
 
     # We are in zone where sum will converge.
 
@@ -379,7 +376,7 @@ def riemann_row_vectorized(s,
         # We still benefit from vectorized operations, which gave 100x improvement.
         cum_sum = [0 + 0j] * len(s)
         for k in range(0, RIEMANN_ITER_LIMIT):
-            cum_sum += NK2_array[k] * np.power(k + 1, -s)   # Calculate the denominator the traditional (4x slower) way.
+            cum_sum += NK2_array[k] * np.power(k + 1, -s)  # Calculate the denominator the traditional (4x slower) way.
 
         if do_eta:
             return cum_sum
@@ -399,9 +396,8 @@ def riemann_row_vectorized(s,
 #
 # All inputs must have Re[s] >= 0, to assure convergence.
 def riemann_vectorized_positive(s,
-                               row_num,  # Which row of mesh grid? 0 is bottom
-                               do_eta=False):
-
+                                row_num,  # Which row of mesh grid? 0 is bottom
+                                do_eta=False):
     global quit_computation_flag
 
     if len(s) == 0:
@@ -445,9 +441,11 @@ def riemann_vectorized_positive(s,
 def log_riemann(s, do_eta=False):
 
     if s.ndim == 2:
-
         out = [0 if quit_computation_flag else log_riemann(x) for x in s]
         return np.stack(out)
+
+    # Remove values with Re[s] < 0
+    s[np.real(s) < 0] = 0
 
     cum_sum = [0 + 0j] * len(s)
 
@@ -464,8 +462,7 @@ def log_riemann(s, do_eta=False):
 #
 # When multiplied by gamma(s/2) * pi ^(-s/2), the result has 180-deg rotational symmetry around s = 0.5 + 0j
 #
-def riemann_symmetric(s, use_log = False):
-
+def riemann_symmetric(s, use_log=False):
     if not use_log:
 
         if np.mean(abs(s)) > 400:

@@ -67,7 +67,7 @@ class MplFigureManager:
 
         return self.fig_plot
 
-    def set_figure_size(self, fig : plt.Figure, x_size=1.0, y_size=1.0):
+    def set_figure_size(self, fig: plt.Figure, x_size=1.0, y_size=1.0):
         # size units are in fractions of screen HEIGHT.
         screen_y_adj = int(self.screen_y_pixels * .95 * y_size)  # Reduce height ~5% so we don't overlap windows taskbar
 
