@@ -422,7 +422,7 @@ def make_plot(_selection):
         # Standard Riemann function
         plot_domain2(lambda z: rm.log_riemann(z),
                      re=[x_min, x_max], im=[y_min, y_max],
-                     title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+                     title='ln(Riemann($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
         # Symmetric Riemann function
         plot_domain2(lambda z: rm.riemann_symmetric(z),
@@ -431,7 +431,7 @@ def make_plot(_selection):
     elif _selection == 6:
             plot_domain2(lambda z: rm.riemann_symmetric(z, True),
                          re=[x_min, x_max], im=[y_min, y_max],
-                         title='RiemannSymmetric($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+                         title='ln(RiemannSymmetric($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
 
     elif _selection == 8:
         # Gamma(s) function

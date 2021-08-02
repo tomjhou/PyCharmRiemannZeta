@@ -6,13 +6,14 @@ from scipy.special import gamma, loggamma
 
 # matplotlib.use("TkAgg")
 
-print("Done importing")
+if __name__ == "__main__":
+    print("Done importing")
 
-if rm.RIEMANN_ITER_LIMIT < 1000:
-    rm.RIEMANN_ITER_LIMIT = 1000
+if rm.RIEMANN_ITER_LIMIT < 2000:
+    rm.RIEMANN_ITER_LIMIT = 2000
 
 rm.precompute_coeffs()
-print("Done computing coefficients, limit = " + str(rm.RIEMANN_ITER_LIMIT))
+print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
 height = 2000
 offset = 5
@@ -27,6 +28,11 @@ s2 = np.linspace(0j, 1j * height, num_points) + offset
 
 # Make figure now so user doesn't have to stare at blank screen too much longer
 plt.figure()
+# Reduce margins
+plt.tight_layout()
+# Make even smaller margins
+plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
+
 # plt.subplot(2,1,1)
 plt.axhline(color='k')
 plt.title('Normalized to gamma magnitude')

@@ -36,7 +36,6 @@ class MplFigureManager:
         print("Screen y resolution: " + str(screen_y))
         print("Screen dpi: " + str(self.dpi))
 
-        self.canvas_buttons = None
         self.menu_width_pixels = 500
 
         # Create figure 1 for main plots
