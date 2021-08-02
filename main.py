@@ -6,6 +6,8 @@ from heatmap_gui import *
 quit_flag = False
 mpl.use('TKAgg')
 
+# Gaps between various menu windows
+PADDING_PIXELS = 5
 
 def do_vectors():
     import riemann_vectors
@@ -14,6 +16,13 @@ def do_vectors():
 def do_heatmap():
 
     win = tk.Toplevel(root)
+    # Place just below earlier window
+
+    # winfo_rooty() gets y-coordinate of window contents BELOW the titlebar, whereas winfo_y(), which gets
+    # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
+    # Noet that we also add
+    new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+    win.geometry(new_geom)
     win_heatmap = WinHeatMap(win)
     win_heatmap.make_heatmap_gui()
 
@@ -39,7 +48,7 @@ ttk.Button(frame1, text="Heatmaps", command=do_heatmap).pack(fill=tk.X, padx=10,
 ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X, padx=10, pady=5)
 ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5)
 
-root.geometry("+5+5")   # Place in very top left corner of screen
+root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))   # Place in very top left corner of screen
 
 # Because matplotlib.close() will terminate this loop, we wrap it in another loop
 while not quit_flag:

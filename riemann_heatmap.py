@@ -27,11 +27,6 @@ points_processed = 0
 last_result = None       # Large array holding result of previous function evaluation.
 image_object = None      # matplotlib object that can be updated when remapping colors
 
-mpl.use('TkAgg')  # Generally I prefer this. It is faster, and seems more polisehd than Qt5Agg
-# mpl.use('Qt5Agg')  # Need install PyQt5. Temporary window won't close in MacOS. Windows resize when moved.
-
-fig_mgr: mfm.MplFigureManager   # = None
-
 # New button-based GUI selection method
 plot_list = {
     2: "Riemann",

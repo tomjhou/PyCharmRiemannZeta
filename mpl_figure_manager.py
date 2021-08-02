@@ -13,6 +13,8 @@ class MplFigureManager:
 #        self.dpi = fig_tmp.dpi
 #        window = plt.get_current_fig_manager().window
 
+        self.menu_width_pixels = 500
+
         if self.backend == "Qt5Agg":
             pass
             # Hack to get screen size. Temporarily make a full-screen window, get size, then later set "real" size
@@ -23,6 +25,7 @@ class MplFigureManager:
             screen_x = root.winfo_screenwidth()
             screen_y = root.winfo_screenheight()
             self.dpi = root.winfo_fpixels('1i')
+            self.menu_width_pixels = root.winfo_width() + root.winfo_x()
 #            screen_x, screen_y = window.wm_maxsize()  # This works for TkAgg, but not Qt5Agg
         else:
             print("Unsupported backend " + self.backend)
@@ -36,7 +39,6 @@ class MplFigureManager:
         print("Screen y resolution: " + str(screen_y))
         print("Screen dpi: " + str(self.dpi))
 
-        self.menu_width_pixels = 500
 
         # Create figure 1 for main plots
         self.fig_plot: plt.Figure = None
@@ -62,7 +64,7 @@ class MplFigureManager:
         plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
 
         # Move plot window to the right to avoid overlapping buttons
-        self.move_window(self.canvas_plot, self.menu_width_pixels + 25, 0)
+        self.move_window(self.canvas_plot, self.menu_width_pixels + 5, 0)
 
         return self.fig_plot
 

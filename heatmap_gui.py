@@ -529,8 +529,6 @@ def do_main():
     root = tk.Tk()
     win = WinHeatMap(root)
     win.make_heatmap_gui()
-    # Place just below earlier window
-    root.geometry("+5+250")
     root.mainloop()
 
 # Make this topmost. This is needed if there is text entry beforehand, which sends focus away from Tkinter objects

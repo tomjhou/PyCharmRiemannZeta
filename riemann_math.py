@@ -16,11 +16,19 @@ quit_computation_flag = False
 USE_CACHED_FUNC = True
 
 RIEMANN_ITER_LIMIT = 40  # Default. Can be overridden
-NK2_array = []
-NK1_array = []
+NK1_array = []  # 2d array of values (n_choose_k) / 2^(n+1)
+NK2_array = []  # 1d array of partial sums of NK1_array
 
+# Counts how many rows of riemann() have been computed so far.
 # Used to determine when to update progress bar, and also tracks which precomputed denominator coefficients to use.
 row_count = 0
+
+# Used by riemann() to track where Re(s) switches from negative to positive. We store this when first row is calculated,
+# so that we can ensure split occurs at exactly the same place for every row. Otherwise rounding errors might cause
+# slight differences between rows
+array_zero_split = 0
+elapsed_time = 0
+entry_count = 0
 
 
 # Precompute table of coefficients for lookup using Euler's transformation.
@@ -55,14 +63,6 @@ def precompute_coeffs():
 def eta_zeta_scale(v):
     # Scale factor converts Dirichlet eta function to Riemann zeta function
     return 1 / (1 - 2 ** (1 - v))
-
-
-# This tracks where Re(s) switches from negative to positive. We store this when first row is calculated, so that
-# we can ensure split occurs at exactly the same place for every row. Otherwise rounding errors might cause slight
-# differences
-array_zero_split = 0
-elapsed_time = 0
-entry_count = 0
 
 
 #
