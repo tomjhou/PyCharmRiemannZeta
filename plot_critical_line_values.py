@@ -9,13 +9,13 @@ from scipy.special import gamma, loggamma
 if __name__ == "__main__":
     print("Done importing")
 
-if rm.RIEMANN_ITER_LIMIT < 4000:
-    rm.RIEMANN_ITER_LIMIT = 4000
+if rm.RIEMANN_ITER_LIMIT < 8000:
+    rm.RIEMANN_ITER_LIMIT = 8000
 
 rm.precompute_coeffs()
 print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
-height = 5000
+height = 7500
 offset = 5
 gap = 0.1
 
