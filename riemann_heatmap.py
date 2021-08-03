@@ -29,10 +29,10 @@ image_object = None      # matplotlib object that can be updated when remapping 
 
 # New button-based GUI selection method
 plot_list = {
-    2: "Riemann",
-    3: "ln(Riemann)",
-    5: "Symmetric Riemann",
-    6: "ln(symmetric riemann)",
+    2: "Riemann(z)",
+    3: "log(Riemann(z))",
+    5: "xi(z) (symmetric Riemann)",
+    6: "log(xi(z))",
     0: "Pinwheel=z",
     8: "Gamma(z)",
     10: "sin(az) + b",
