@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
 class SettingsClass:
     def __init__(self):
-        self.SCALE = .98       # Plot size as a function of screen height
+        self.SCALE = .9       # Plot size as a function of screen height
         self.MESH_DENSITY = 0.65  # Set # of mesh points as a function of "standard"
 
         # Flags for recalculation
@@ -87,7 +87,7 @@ settings = SettingsClass()
 
 def make_figure_manager(win):
     global fig_mgr
-    fig_mgr = mfm.MplFigureManager(win)
+    fig_mgr = mfm.FigureManager(win)
 
 
 def make_fig_plot(_event, _id):
@@ -240,7 +240,7 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     else:
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
-        fig = fig_mgr.make_plot_fig(settings.SCALE * aspect, settings.SCALE)
+        fig = fig_mgr.make_plot_fig(aspect, settings.SCALE)
 #        fig.canvas.mpl_connect('key_press_event', on_keypress)
         settings.last_figure = fig
         fig.canvas.draw()
@@ -306,7 +306,7 @@ def map_color(w=None, re=None, im=None, title=None, show_axis=True):
     # This could take several seconds for large plots, and is excruciatingly slow for 4x oversampled
     # plots. On MacOS, we see a "wait" cursor right away, while Windows takes much longer to show wait cursor.
     try:
-        fig_mgr.canvas_plot.draw()
+        fig_mgr.fig_plot.canvas.draw()
     #            fig_mgr.canvas_plot.flush_events()   # Doesn't seem to be needed
     except tkinter.TclError:
         # If we recalculated but closed the original plot, then there will be a new figure generated
@@ -316,7 +316,6 @@ def map_color(w=None, re=None, im=None, title=None, show_axis=True):
 
         # Get current figure and save it, so that next recalculate will work normally.
         fig_mgr.fig_plot = plt.gcf()
-        fig_mgr.canvas_plot = fig_mgr.fig_plot.canvas
 
 
 def calculate_domain(f, re=(-1, 1), im=(-1, 1), density=200):  # density is number of points per unit interval

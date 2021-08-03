@@ -439,15 +439,30 @@ def riemann_vectorized_positive(s,
 # Uses vectorized operations, but not cached denominators, since input will not generally have predictable
 # structure
 def log_riemann(s, do_eta=False):
+    global row_count
 
-    if s.ndim == 2:
-        out = [0 if quit_computation_flag else log_riemann(x) for x in s]
-        return np.stack(out)
+    if type(s) == np.ndarray:
+        if s.ndim == 2:
+            row_count = 0
+            out = [0 if quit_computation_flag else log_riemann(x) for x in s]
+            return np.stack(out)
 
-    # Remove values with Re[s] < 0
-    s[np.real(s) < 0] = 0
+    # Have 1D array, most likely
+    # We have 1D vector. Update progress bar, then call Riemann for individual values
+    row_count += 1
 
-    cum_sum = [0 + 0j] * len(s)
+    if np.mod(row_count, 50) == 0:
+        # Update progress bar every 50 rows
+        if computation_progress_callback is not None:
+            computation_progress_callback(np.size(s) * 50)
+
+    # Remove values with Re[s] < 0, but only for vectors (single value can't do this)
+    if np.size(s) > 1:
+        s[np.real(s) < 0] = 0
+        cum_sum = [0 + 0j] * len(s)
+    else:
+        s = float(s)     # np.power can't handle negative integer exponents, so make sure it is float
+        cum_sum = 0 + 0j
 
     for k in range(0, RIEMANN_ITER_LIMIT):
         cum_sum += NK2_array[k] * np.power(k + 1, -s)
