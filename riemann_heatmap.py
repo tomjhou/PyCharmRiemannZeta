@@ -45,7 +45,8 @@ plot_list = {
     17: "Dirichlet eta",
     18: "gamma(z/2) * pi^(-z/2)",
     19: "gamma(z) * gamma(1-z) = pi/sin(pi*z)",
-    20: "gamma(z) * gamma(conj(z))=Real"
+    20: "gamma(z) * gamma(conj(z))=Real",
+    21: "z * (z - 1)"
 }
 
 if __name__ == "__main__":
@@ -416,7 +417,7 @@ def make_plot(_selection):
         # Standard Riemann function
         plot_domain2(lambda z: rm.log_riemann(z),
                      re=[x_min, x_max], im=[y_min, y_max],
-                     title='ln(Riemann($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+                     title='log(Riemann($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
         # Symmetric Riemann function
         plot_domain2(lambda z: rm.riemann_symmetric(z),
@@ -425,7 +426,7 @@ def make_plot(_selection):
     elif _selection == 6:
             plot_domain2(lambda z: rm.riemann_symmetric(z, True),
                          re=[x_min, x_max], im=[y_min, y_max],
-                         title='ln(RiemannSymmetric($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+                         title='log(RiemannSymmetric($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
 
     elif _selection == 8:
         # Gamma(s) function
@@ -510,6 +511,11 @@ def make_plot(_selection):
                      title='gamma($z$)*gamma($\\bar{z}$)')
 
         settings.magnitude_only = old_val
+    elif _selection == 21:
+        #  z * (z-1)
+        plot_domain2(lambda z: z * (z - 1),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='$z$*($z$-1)')
 
     rm.quit_computation_flag = False
 

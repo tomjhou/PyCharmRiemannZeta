@@ -9,22 +9,23 @@ from scipy.special import gamma, loggamma
 if __name__ == "__main__":
     print("Done importing")
 
-if rm.RIEMANN_ITER_LIMIT < 2000:
-    rm.RIEMANN_ITER_LIMIT = 2000
+if rm.RIEMANN_ITER_LIMIT < 4000:
+    rm.RIEMANN_ITER_LIMIT = 4000
 
 rm.precompute_coeffs()
 print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
-height = 2000
+height = 5000
 offset = 5
-num_points = height * 10  # density of points
+gap = 0.1
 
 # Input vector along critical line Re[s] = 0.5
-s = np.linspace(0j, 1j * height, num_points) + 0.5
+imag_part = np.arange(1, height, gap) * 1j
+s = imag_part + 0.5
 ax = np.imag(s)  # this is what will be used for x-axis of plot
 
 # Input vector along line Re[s] = 5
-s2 = np.linspace(0j, 1j * height, num_points) + offset
+s2 = imag_part + offset
 
 # Make figure now so user doesn't have to stare at blank screen too much longer
 plt.figure()
@@ -59,13 +60,13 @@ def show():
 #     log(abs(c)) = Re(log(c))
 
 y_log = rm.riemann_symmetric(s, use_log=True) - np.real(loggamma(s / 2))
-y = np.real(np.exp(y_log))
+y = np.real(np.exp(y_log) / (ax * ax + 0.25))
 plt.plot(ax, y, linewidth=1)
 show()
 
 # Calculate at line Re[s] = offset
 y2_log = np.log(np.pi) * (offset / 2) + rm.riemann_symmetric(s2, use_log=True) - np.real(loggamma(s2 / 2))
-y2 = np.real(np.exp(y2_log))
+y2 = np.real(np.exp(y2_log) / (ax * ax + offset * offset))
 plt.plot(ax, -y2, linewidth=1)
 show()
 

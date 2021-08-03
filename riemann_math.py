@@ -477,6 +477,8 @@ def log_riemann(s, do_eta=False):
 #
 # When multiplied by gamma(s/2) * pi ^(-s/2), the result has 180-deg rotational symmetry around s = 0.5 + 0j
 #
+# When multiplied by an additional (1/2)s(s-1), we get the riemann xi function
+#
 def riemann_symmetric(s, use_log=False):
     if not use_log:
 
@@ -492,7 +494,7 @@ def riemann_symmetric(s, use_log=False):
             # If we were interrupted, we will have a "ragged" list, in which some elements are a single "0",
             # while others are a full length vector. Don't try to multiply by anything, as array sizes won't match.
             return r
-        return r * gamma(s / 2) * (np.pi ** (-s / 2))
+        return (1/2) * s * (s-1) * r * gamma(s / 2) * (np.pi ** (-s / 2))
 
     # For very large abs(s), we want to calculate log
 
@@ -503,7 +505,7 @@ def riemann_symmetric(s, use_log=False):
 
     # First remove values with Re[s] < 0
     s[np.real(s) < 0] = 0
-    return log_riemann(s) + loggamma(s / 2) - s * np.log(np.pi) / 2
+    return np.log(0.5) + np.log(s) + np.log(s-1) + log_riemann(s) + loggamma(s / 2) - s * np.log(np.pi) / 2
 
 
 # Calculate gamma(s) while also updating progress bar
