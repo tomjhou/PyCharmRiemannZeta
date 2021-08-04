@@ -4,9 +4,11 @@ import matplotlib.pyplot as plt
 
 class FigureManager:
 
-    def __init__(self, root):
+    def __init__(self, root, is_android):
 
-        self.root = root
+        self.control_window = root
+        self.is_android = is_android
+
         self.screen_x_pixels = root.winfo_screenwidth()
         self.screen_y_pixels = root.winfo_screenheight()
         self.dpi = root.winfo_fpixels('1i')
@@ -44,8 +46,9 @@ class FigureManager:
         plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
 
         # Move plot window to the right to avoid overlapping buttons
-        menu_width_pixels = self.root.winfo_width() + self.root.winfo_x()
-        self.fig_plot.canvas.manager.window.wm_geometry("+%d+%d" % (menu_width_pixels + 5, 0))
+        if not self.is_android:
+            menu_width_pixels = self.control_window.winfo_width() + self.control_window.winfo_x()
+            self.fig_plot.canvas.manager.window.wm_geometry("+%d+%d" % (menu_width_pixels + 5, 0))
 
         #        self.canvas_plot.draw()   # Need this or figure won't show
         plt.pause(0.001)  # Need this or figure won't show

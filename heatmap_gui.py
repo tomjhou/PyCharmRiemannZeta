@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from functools import partial, partialmethod
+from os import environ
 
 import riemann_heatmap as rh
 
@@ -17,11 +18,12 @@ def do_button(wid):
 
 
 class WinHeatMap:
-    def __init__(self, win):
+    def __init__(self, win, is_android):
 
         # global rh.fig_mgr
 
         self.win = win
+        self.is_android = is_android
 
         win.title(string="Complex functions")
 
@@ -243,7 +245,7 @@ class WinHeatMap:
 
     def set_initial_values(self):
 
-        rh.make_figure_manager(self.win)
+        rh.make_figure_manager(self.win, self.is_android)
 
         # These must go outside constructor, as they will trigger callback
         # which needs access to mainApp object
@@ -527,7 +529,11 @@ class WinHeatMap:
 
 def do_main():
     root = tk.Tk()
-    win = WinHeatMap(root)
+
+    if 'ANDROID_BOOTLOGO' in environ:
+        is_android = True
+
+    win = WinHeatMap(root, is_android)
     win.make_heatmap_gui()
     root.mainloop()
 

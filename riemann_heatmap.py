@@ -86,9 +86,9 @@ class SettingsClass:
 settings = SettingsClass()
 
 
-def make_figure_manager(win):
+def make_figure_manager(win, is_android):
     global fig_mgr
-    fig_mgr = mfm.FigureManager(win)
+    fig_mgr = mfm.FigureManager(win, is_android)
 
 
 def make_fig_plot(_event, _id):

@@ -33,7 +33,7 @@ def do_heatmap():
         print("Creating heatmap control window at location " + new_geom)
         win.geometry(new_geom)
 
-    win_heatmap = WinHeatMap(win)
+    win_heatmap = WinHeatMap(win, is_android)
     win_heatmap.make_heatmap_gui()
 
 
@@ -47,10 +47,17 @@ def do_exit():
     root.quit()
 
 
+if 'ANDROID_BOOTLOGO' in environ:
+    is_android = True
+
 root = tk.Tk()
 root.title(string="Choose")
-frame1 = tk.Frame(root, highlightbackground="black", highlightthickness=1, relief="flat", borderwidth=5)
-frame1.pack(side=tk.TOP, fill=tk.BOTH, padx=20, pady=20)
+
+if is_android:
+    frame1 = root
+else:
+    frame1 = tk.Frame(root, highlightbackground="black", highlightthickness=1, relief="flat", borderwidth=5)
+    frame1.pack(side=tk.TOP, fill=tk.BOTH, padx=20, pady=20)
 
 ttk.Label(frame1, text="Choose program").pack(fill=tk.X, pady=5)
 ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X, padx=10, pady=5)
@@ -59,23 +66,15 @@ ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fil
 ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5)
 
 
-if 'ANDROID_BOOTLOGO' in environ:
-    is_android = True
-    print("Android")
-#    root.geometry("300x600")
+if is_android:
+    print("Android!")
+#    root.geometry("300x400")
     frame1.update()
 else:
     root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))  # Place in very top left corner of screen
     frame1.update()
-#    root.geometry("300x600")
-
-print ("OS platform " + platform.platform())
-print ("OS type is " + platform.system())
-print ("OS release " + platform.release())
-print ("OS version " + platform.version())
 
 print ("Created main window with geometry " + root.winfo_geometry())
-
 
 # frame1.tkraise()
 
