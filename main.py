@@ -30,9 +30,9 @@ def do_heatmap():
         # Noet that we also add
 
         new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+        print("Creating heatmap control window at location " + new_geom)
+        win.geometry(new_geom)
 
-    print("Creating heatmap control window at location " + new_geom)
-    win.geometry(new_geom)
     win_heatmap = WinHeatMap(win)
     win_heatmap.make_heatmap_gui()
 
