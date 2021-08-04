@@ -33,11 +33,12 @@ class FigureManager:
 
         height_pixels = int(self.screen_y_pixels * y_size)
         width_pixels = int(self.screen_y_pixels * aspect * y_size)
-        x_inches = width_pixels / self.dpi
-        y_inches = height_pixels / self.dpi
+        x_inches = width_pixels / self.fig_plot.dpi
+        y_inches = height_pixels / self.fig_plot.dpi
         print("Creating window with size (in inches) " + "%1.2f" % x_inches + " x %1.2f" % y_inches)
 
-        # Make large square window for main plots
+        # Make large square window for main plots. For some reason, on Android window comes out much
+        # smaller than expected.
         self.fig_plot.set_size_inches(x_inches, y_inches)
 
         # Make smaller margins
