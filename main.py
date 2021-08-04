@@ -29,7 +29,8 @@ def do_heatmap():
         # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
         # Noet that we also add
 
-        new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+#        new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+        new_geom = "+%d+%d" % (25, 25)
         print("Creating heatmap control window at location " + new_geom)
         win.geometry(new_geom)
 
@@ -54,26 +55,38 @@ root = tk.Tk()
 root.title(string="Choose")
 
 if is_android:
+    # Use simpler GUI on PyDroid, and larger buttons
     frame1 = root
+    ipad = 20
 else:
     frame1 = tk.Frame(root, highlightbackground="black", highlightthickness=1, relief="flat", borderwidth=5)
     frame1.pack(side=tk.TOP, fill=tk.BOTH, padx=20, pady=20)
+    ipad = 10
 
 ttk.Label(frame1, text="Choose program").pack(fill=tk.X, pady=5)
-ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X, padx=10, pady=5)
-ttk.Button(frame1, text="Heatmaps", command=do_heatmap).pack(fill=tk.X, padx=10, pady=5)
-ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X, padx=10, pady=5)
-ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5)
+ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X,
+                                                                    padx=10, pady=5,
+                                                                    ipadx=ipad, ipady=ipad)
+ttk.Button(frame1, text="Heatmaps", command=do_heatmap).pack(fill=tk.X,
+                                                             padx=10, pady=5,
+                                                             ipadx=ipad, ipady=ipad)
+ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X,
+                                                                             padx=10, pady=5,
+                                                                             ipadx=ipad, ipady=ipad)
+ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X,
+                                                      padx=10, pady=5,
+                                                      ipadx=ipad, ipady=ipad)
 
 
 if is_android:
     print("Android!")
-#    root.geometry("300x400")
-    frame1.update()
+    # On PyDroid, I can't get root.geometry() to do anything. So just skip it.
 else:
-    root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))  # Place in very top left corner of screen
-    frame1.update()
+    # Place in top left corner of screen
+    root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))
 
+# Force window to show, otherwise winfo_geometry() will return zero
+frame1.update()
 print ("Created main window with geometry " + root.winfo_geometry())
 
 # frame1.tkraise()
