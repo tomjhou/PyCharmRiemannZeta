@@ -58,17 +58,16 @@ ttk.Button(frame1, text="Heatmaps", command=do_heatmap).pack(fill=tk.X, padx=10,
 ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X, padx=10, pady=5)
 ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5)
 
-root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))   # Place in very top left corner of screen
-
-frame1.update()
 
 if 'ANDROID_BOOTLOGO' in environ:
     is_android = True
     print("Android")
-    root.geometry("300x600")
+#    root.geometry("300x600")
     frame1.update()
 else:
-    root.geometry("300x600")
+    root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))  # Place in very top left corner of screen
+    frame1.update()
+#    root.geometry("300x600")
 
 print ("OS platform " + platform.platform())
 print ("OS type is " + platform.system())
