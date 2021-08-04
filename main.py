@@ -59,6 +59,7 @@ frame1.update()
 
 if 'ANDROID_BOOTLOGO' in environ:
     print("Android")
+    root.geometry("300x600")
 print ("OS platform " + platform.platform())
 print ("OS type is " + platform.system())
 print ("OS release " + platform.release())
