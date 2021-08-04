@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 import matplotlib as mpl
+import platform
+
 from heatmap_gui import *
 
 quit_flag = False
@@ -22,6 +24,8 @@ def do_heatmap():
     # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
     # Noet that we also add
     new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+
+    print("Creating heatmap control window at location " + new_geom)
     win.geometry(new_geom)
     win_heatmap = WinHeatMap(win)
     win_heatmap.make_heatmap_gui()
@@ -49,6 +53,14 @@ ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fil
 ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X, padx=10, pady=5)
 
 root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))   # Place in very top left corner of screen
+
+frame1.update()
+
+print ("OS type is " + platform.system())
+print("Created main window with geometry " + root.winfo_geometry())
+
+
+# frame1.tkraise()
 
 # Because matplotlib.close() will terminate this loop, we wrap it in another loop
 while not quit_flag:
