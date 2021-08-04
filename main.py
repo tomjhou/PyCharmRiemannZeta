@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib as mpl
 import platform
+from os import environ
 
 from heatmap_gui import *
 
@@ -56,11 +57,13 @@ root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))   # Place in very top
 
 frame1.update()
 
-print("OS platform " + platform.platform())
+if 'ANDROID_BOOTLOGO' in environ:
+    print("Android")
+print ("OS platform " + platform.platform())
 print ("OS type is " + platform.system())
 print ("OS release " + platform.release())
-print("OS version " + platform.version())
-print("Created main window with geometry " + root.winfo_geometry())
+print ("OS version " + platform.version())
+print ("Created main window with geometry " + root.winfo_geometry())
 
 
 # frame1.tkraise()
