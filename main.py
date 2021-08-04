@@ -11,6 +11,7 @@ mpl.use('TKAgg')
 
 # Gaps between various menu windows
 PADDING_PIXELS = 5
+is_android = False
 
 def do_vectors():
     import riemann_vectors
@@ -21,10 +22,14 @@ def do_heatmap():
     win = tk.Toplevel(root)
     # Place just below earlier window
 
-    # winfo_rooty() gets y-coordinate of window contents BELOW the titlebar, whereas winfo_y(), which gets
-    # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
-    # Noet that we also add
-    new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+    if not is_android:
+        # Move to avoid overlapping first window
+
+        # winfo_rooty() gets y-coordinate of window contents BELOW the titlebar, whereas winfo_y(), which gets
+        # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
+        # Noet that we also add
+
+        new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
 
     print("Creating heatmap control window at location " + new_geom)
     win.geometry(new_geom)
@@ -58,12 +63,18 @@ root.geometry("+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS))   # Place in very top
 frame1.update()
 
 if 'ANDROID_BOOTLOGO' in environ:
+    is_android = True
     print("Android")
     root.geometry("300x600")
+    frame1.update()
+else:
+    root.geometry("300x600")
+
 print ("OS platform " + platform.platform())
 print ("OS type is " + platform.system())
 print ("OS release " + platform.release())
 print ("OS version " + platform.version())
+
 print ("Created main window with geometry " + root.winfo_geometry())
 
 
