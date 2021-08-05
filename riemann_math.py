@@ -416,7 +416,9 @@ def riemann_row_non_negative(s,
         # Old version: about 10x slower since we recompute exponential every time
         # We still benefit from vectorized operations, which gave 100x improvement.
 
-        if USE_MATRIX_MULT:
+        if False:  # USE_MATRIX_MULT:
+            # Use 2D vectorization, to try to speed up further
+
             # Create column vector of numbers 1, 2, ... RIEMANN_ITER_LIMIT
             bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
             # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
@@ -427,9 +429,13 @@ def riemann_row_non_negative(s,
             # Now do matrix product
             cum_sum = np.dot(NK2_array, powers)
 
-            # Strangely, although np.dot() is much faster than loop, the vectorized np.power()
+            # Strangely, although np.dot() is much faster than loop, the 2D vectorized np.power()
             # is actually very slow, and takes LONGER than the loop below.
         else:
+            # Use 1D vectorization, which is MUCH faster than nothing at all.
+            # There is still a loop across the k's. I tried vectorizing that dimension also, but it actually made things
+            # slower - about 29 sec instead of 26 on home office computer, and 12 sec vs 8 sec on mac mini. By comparison
+            # matlab did the 2D vectorized operation in about 5 seconds on home office computer, or about 5x faster.
             cum_sum = [0 + 0j] * len(s)
 
             for k in range(0, RIEMANN_ITER_LIMIT):
