@@ -64,15 +64,15 @@ else:
     ipad = 10
 
 ttk.Label(frame1, text="Choose program").pack(fill=tk.X, pady=5)
-ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X,
-                                                                    padx=10, pady=5,
-                                                                    ipadx=ipad, ipady=ipad)
 ttk.Button(frame1, text="Heatmaps", command=do_heatmap).pack(fill=tk.X,
                                                              padx=10, pady=5,
                                                              ipadx=ipad, ipady=ipad)
 ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X,
                                                                              padx=10, pady=5,
                                                                              ipadx=ipad, ipady=ipad)
+ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X,
+                                                                    padx=10, pady=5,
+                                                                    ipadx=ipad, ipady=ipad)
 ttk.Button(frame1, text="Exit", command=do_exit).pack(fill=tk.X,
                                                       padx=10, pady=5,
                                                       ipadx=ipad, ipady=ipad)

@@ -1,23 +1,25 @@
 import numpy as np
 # import matplotlib
 import matplotlib.pyplot as plt
-import riemann_math as rm
 from scipy.special import gamma, loggamma
+import platform
+import time
 
+import riemann_math as rm
 # matplotlib.use("TkAgg")
 
 if __name__ == "__main__":
     print("Done importing")
 
-if rm.RIEMANN_ITER_LIMIT < 8000:
-    rm.RIEMANN_ITER_LIMIT = 8000
+height = 4000
+offset = 5
+gap = 0.1
+
+if rm.RIEMANN_ITER_LIMIT < height:
+    rm.RIEMANN_ITER_LIMIT = height
 
 rm.precompute_coeffs()
 print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
-
-height = 7500
-offset = 5
-gap = 0.1
 
 # Input vector along critical line Re[s] = 0.5
 imag_part = np.arange(1, height, gap) * 1j
@@ -39,12 +41,14 @@ plt.axhline(color='k')
 plt.title('Normalized to gamma magnitude')
 
 
-# plt.show() creates a second mainloop() that causes everything to hang if there is
-# already a mainloop running. Use plt.draw() followed by plt.pause() instead.
+# plt.show() will pause the GUI, so we use plt.draw() followed by plt.pause() instead.
 def show():
     plt.draw()
     plt.pause(0.001)
 
+
+# This will make a blank window show up so user knows something is about to happen
+show()
 
 #
 # Calculate riemann values at line Re[s] = 0.5
@@ -59,17 +63,23 @@ def show():
 # Hence, for any complex c,
 #     log(abs(c)) = Re(log(c))
 
+t0 = time.time()
 y_log = rm.riemann_symmetric(s, use_log=True) - np.real(loggamma(s / 2))
 y = np.real(np.exp(y_log) / (ax * ax + 0.25))
 plt.plot(ax, y, linewidth=1)
+delay = time.time() - t0
+print("Plotted values along critical line Re[s]=0.5 in %1.2f seconds" % delay)
 show()
 
 # Calculate at line Re[s] = offset
 y2_log = np.log(np.pi) * (offset / 2) + rm.riemann_symmetric(s2, use_log=True) - np.real(loggamma(s2 / 2))
 y2 = np.real(np.exp(y2_log) / (ax * ax + offset * offset))
 plt.plot(ax, -y2, linewidth=1)
+delay = time.time() - t0 - delay
+print("Plotted values along Re[s] = %1.1f in %1.2f seconds" % (offset, delay))
 show()
 
 if __name__ == "__main__":
     # This keeps main window open until dismissed. Don't call this if we came here from elsewhere.
+    print("Close window to exit program")
     plt.show()

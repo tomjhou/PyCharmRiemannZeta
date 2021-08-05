@@ -76,7 +76,7 @@ def precompute_coeffs():
             NK2_array[k] = ((-1) ** k) * tmp_sum
 
     delay = time.time() - t1
-    print("Precomputed eta coefficients in " + "{:1.4f}".format(delay) + " seconds")
+    print("Precomputed eta coefficients for %d iterations in %1.4f seconds " % (RIEMANN_ITER_LIMIT, delay))
 
 
 def eta_zeta_scale(v):
@@ -415,9 +415,25 @@ def riemann_row_non_negative(s,
     else:
         # Old version: about 10x slower since we recompute exponential every time
         # We still benefit from vectorized operations, which gave 100x improvement.
-        cum_sum = [0 + 0j] * len(s)
-        for k in range(0, RIEMANN_ITER_LIMIT):
-            cum_sum += NK2_array[k] * np.power(k + 1, -s)  # Calculate power the traditional (4x slower) way.
+
+        if USE_MATRIX_MULT:
+            # Create column vector of numbers 1, 2, ... RIEMANN_ITER_LIMIT
+            bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
+            # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
+            bases = np.repeat(bases, len(s), axis=1)
+            # Raise all numbers in 2D array to each value in s. In matlab, we would do bsxfun(@power, bases, s)
+            # on the 1D arrays, and would not need extra step of creating 2D array.
+            powers = np.power(bases, -s)
+            # Now do matrix product
+            cum_sum = np.dot(NK2_array, powers)
+
+            # Strangely, although np.dot() is much faster than loop, the vectorized np.power()
+            # is actually very slow, and takes LONGER than the loop below.
+        else:
+            cum_sum = [0 + 0j] * len(s)
+
+            for k in range(0, RIEMANN_ITER_LIMIT):
+                cum_sum += NK2_array[k] * np.power(k + 1, -s)  # Calculate power the traditional (4x slower) way.
 
         if do_eta:
             return cum_sum
@@ -446,31 +462,24 @@ def log_riemann(s, do_eta=False):
             elapsed_time = time.time() - t1
             return np.stack(out)
 
-    # Have 1D array, most likely
-    # We have 1D vector. Update progress bar, then call Riemann for individual values
-    row_count += 1
-
-    if np.mod(row_count, 50) == 0:
-        # Update progress bar every 50 rows
-        if computation_progress_callback is not None:
-            computation_progress_callback(np.size(s) * 50)
-
-    # Remove values with Re[s] < 0, but only for vectors (single value can't do this)
+    # Have 1D array or single value
     if np.size(s) > 1:
+        # Remove values with Re[s] < 0 for vector
         s[np.real(s) < 0] = 0
-        cum_sum = [0 + 0j] * len(s)
-    else:
-        s = float(s)  # np.power can't handle negative integer exponents, so make sure it is float
-        cum_sum = 0 + 0j
-
-    for k in range(0, RIEMANN_ITER_LIMIT):
-        cum_sum += NK2_array[k] * np.power(k + 1, -s)
-
-    if do_eta:
+        cum_sum = riemann_row_non_negative(s, 0, do_eta=False, USE_CACHED_FUNC=False)
         return np.log(cum_sum)
     else:
-        # Scale factor converts Dirichlet eta function to Riemann zeta function
-        return np.log(cum_sum) - np.log(1 - np.power(2, 1 - s))
+        # Have single value
+        s = float(s)  # np.power can't handle negative integer exponents, so make sure it is float
+        cum_sum = 0 + 0j
+        for k in range(0, RIEMANN_ITER_LIMIT):
+            cum_sum += NK2_array[k] * np.power(k + 1, -s)
+
+        if do_eta:
+            return np.log(cum_sum)
+        else:
+            # Scale factor converts Dirichlet eta function to Riemann zeta function
+            return np.log(cum_sum) - np.log(1 - np.power(2, 1 - s))
 
 
 #
