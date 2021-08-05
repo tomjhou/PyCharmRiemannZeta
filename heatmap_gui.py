@@ -6,17 +6,6 @@ from os import environ
 import riemann_heatmap as rh
 
 
-def do_square():
-    # diagnostic function only. Because we have a backing variable tracking this, we don't need to handle anything
-    print("Keep square val: " + str(rh.settings.keep_square.get()))
-
-
-def do_button(wid):
-    print("do_button " + str(wid))
-    rh.settings.last_selection = wid
-    rh.make_plot(_selection=wid)
-
-
 class WinHeatMap:
     def __init__(self, win, is_android):
 
@@ -152,18 +141,9 @@ class WinHeatMap:
         rh.settings.keep_square = tk.IntVar(win)
         self.checkbox_keep_square = ttk.Checkbutton(frame_checks_plot,
                                                     text="1:1 aspect ratio",
-                                                    command=do_square,
+                                                    command=self.do_square,
                                                     variable=rh.settings.keep_square)
         self.checkbox_keep_square.pack(side=tk.LEFT)
-
-
-        # Positive y only
-#        self.var_top_only = tk.IntVar(win)
-#        self.checkbox_top_only = ttk.Checkbutton(frame_checks_plot,
-#                                                 text="Positive y only",
-#                                                 command=self.do_positive_y_only,
-#                                                 variable=self.var_top_only)
-#        self.checkbox_top_only.pack(side=tk.LEFT)
 
         #
         # Row of buttons
@@ -221,8 +201,7 @@ class WinHeatMap:
         for k in rh.plot_list:
             self.button_ax_list[k] = ttk.Button(frame2, text=rh.plot_list[k],
                                                 # For some reason, lambda doesn't work, but partial does
-#                                                command=self.do_button2)
-                                                command=partial(do_button, k))
+                                                command=partial(self.do_button, k))
             self.button_ax_list[k].grid(column=col_num, row=row_num, sticky=tk.E + tk.W)
 
             col_num += 1
@@ -281,9 +260,14 @@ class WinHeatMap:
     # partialmethod() does not work in combination with tkinter. So this is not used.
     # Instead, there is a function defined outside this class that handles button press.
     def do_button(self, wid):
-        print("do_button " + str(wid))
+        print()
+        print("User chose plot: " + rh.plot_list[wid])
         rh.settings.last_selection = wid
         rh.make_plot(_selection=wid)
+
+    def do_square(self):
+        # diagnostic function only. Because we have a backing variable tracking this, we don't need to handle anything
+        print("Keep square val: " + str(rh.settings.keep_square.get()))
 
     def do_quit(self):
 

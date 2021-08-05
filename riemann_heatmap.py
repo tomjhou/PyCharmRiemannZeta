@@ -70,7 +70,7 @@ class SettingsClass:
 
         # Boolean variables to control plot domain
         self.critical_strip = False
-        self.keep_square: tkinter.IntVar
+        self.keep_square: tkinter.IntVar    # Note that this is a backing variable, so behaves differently
 
         # Formula parameters
         self.parameterA = 1.0
