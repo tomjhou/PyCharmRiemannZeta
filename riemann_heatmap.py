@@ -69,7 +69,6 @@ class SettingsClass:
         self.magnitude_only = False
 
         # Boolean variables to control plot domain
-        self.top_only = False
         self.critical_strip = False
         self.keep_square: tkinter.IntVar
 
@@ -387,19 +386,14 @@ def make_plot(_selection):
         rm.precompute_coeffs()
 
     y_max = settings.plot_y_start + settings.plot_range_y
-    x_max = settings.plot_range_x
-
-    if settings.top_only:
-        y_min = settings.plot_y_start
-        x_max /= 2
-        x_min = -x_max
-    else:
-        y_min = settings.plot_y_start - settings.plot_range_y
-        x_min = -x_max
+    y_min = settings.plot_y_start - settings.plot_range_y
 
     if settings.critical_strip:
-        x_min = -1
-        x_max = 2
+        x_min = 0
+        x_max = 1
+    else:
+        x_max = settings.plot_range_x
+        x_min = -x_max
 
     a = settings.parameterA
     b = settings.parameterB

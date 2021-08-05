@@ -249,7 +249,7 @@ def precompute_denom(mesh):
     # Look at bottom row
     row1 = mesh[0]
     # Find where Re(s) switches to positive
-    array_zero_split = bisect.bisect_left(row1, 0)
+    array_zero_split = bisect.bisect_left(np.real(row1), 0)
     # Put all negative values (< 0) in one array
     row1_neg_vals = row1[0:array_zero_split]
     # Put all non-negative (>= 0) values in a second array

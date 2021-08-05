@@ -101,7 +101,7 @@ class WinHeatMap:
         #
 
         # Plot x range
-        self.label_spinner2 = ttk.Label(frame_spinner, text="Plot x range: ")
+        self.label_spinner2 = ttk.Label(frame_spinner, text="Plot x ± range: ")
         self.label_spinner2.pack(side=tk.LEFT)
 
         # spinbox for plot x range
@@ -113,7 +113,7 @@ class WinHeatMap:
         self.spin2.bind('<Return>', self.do_spin2_event)
         self.spin2.bind('<FocusOut>', self.do_spin2_event)
 
-        self.label_spinner = ttk.Label(frame_spinner, text="  Plot y range: ")
+        self.label_spinner = ttk.Label(frame_spinner, text="  Plot y ± range: ")
         self.label_spinner.pack(side=tk.LEFT)
         self.spin1 = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin1, width=5)
         self.spin1.pack(side=tk.LEFT)
@@ -123,7 +123,7 @@ class WinHeatMap:
         self.spin1.bind('<FocusOut>', self.do_spin1_event)
         #            self.spin1.bind('<FocusIn>', do_spin1_event)
 
-        self.label_spinner = ttk.Label(frame_spinner, text="  Plot y start: ")
+        self.label_spinner = ttk.Label(frame_spinner, text="  Plot y center: ")
         self.label_spinner.pack(side=tk.LEFT)
         self.spin3 = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin3, width=5)
         self.spin3.pack(side=tk.LEFT)
@@ -151,18 +151,18 @@ class WinHeatMap:
         # Narrow x only
         self.var_critical_strip = tk.IntVar(win)
         self.checkbox_critical_strip = ttk.Checkbutton(frame_checks_plot,
-                                                       text="-2 < x < 2 only (critical strip)",
+                                                       text="0 < x < 1 only (critical strip)",
                                                        command=self.do_critical_strip,
                                                        variable=self.var_critical_strip)
         self.checkbox_critical_strip.pack(side=tk.LEFT)
 
         # Positive y only
-        self.var_top_only = tk.IntVar(win)
-        self.checkbox_top_only = ttk.Checkbutton(frame_checks_plot,
-                                                 text="Positive y only",
-                                                 command=self.do_positive_y_only,
-                                                 variable=self.var_top_only)
-        self.checkbox_top_only.pack(side=tk.LEFT)
+#        self.var_top_only = tk.IntVar(win)
+#        self.checkbox_top_only = ttk.Checkbutton(frame_checks_plot,
+#                                                 text="Positive y only",
+#                                                 command=self.do_positive_y_only,
+#                                                 variable=self.var_top_only)
+#        self.checkbox_top_only.pack(side=tk.LEFT)
 
         #
         # Row of buttons
@@ -262,7 +262,6 @@ class WinHeatMap:
         self.var_auto_recalculate.set(rh.settings.auto_recalculate)
 
         # Checkboxes for plot domain range
-        self.var_top_only.set(rh.settings.top_only)
         self.var_critical_strip.set(rh.settings.critical_strip)
         rh.settings.keep_square.set(1)
 
@@ -505,11 +504,6 @@ class WinHeatMap:
     def do_checkbox_auto_recalculate(self):
         # Handle user checking-unchecking this box
         rh.settings.auto_recalculate = self.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
-        if rh.settings.auto_recalculate:
-            self.do_recalculate()
-
-    def do_positive_y_only(self):
-        rh.settings.top_only = self.var_top_only.get()
         if rh.settings.auto_recalculate:
             self.do_recalculate()
 
