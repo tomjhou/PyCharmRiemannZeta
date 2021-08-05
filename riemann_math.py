@@ -40,24 +40,43 @@ def precompute_coeffs():
         # No need to recalculate
         return
 
+    VECTORIZED = True
+
+    t1 = time.time()
+
     NK2_array = np.zeros(RIEMANN_ITER_LIMIT)
     #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
     NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT))
     NK1_array[0, 0] = 0.5  # This will be (n_choose_k) / 2^(n+1)
-    for n in range(1, RIEMANN_ITER_LIMIT):
-        NK1_array[n, 0] = NK1_array[n - 1, 0] / 2
-        for k in range(1, n + 1):
-            # Pascal's triangle, but with an additional divide by 2 at each row.
-            NK1_array[n, k] = (NK1_array[n - 1, k - 1] + NK1_array[n - 1, k]) / 2
 
-    # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
-    for k in range(0, RIEMANN_ITER_LIMIT):
-        tmp_sum = 0
-        for n in range(k, RIEMANN_ITER_LIMIT):
-            tmp_sum += NK1_array[n, k]  # comb(n,k) / (2 ** (n+1))
-        NK2_array[k] = ((-1) ** k) * tmp_sum
+    if VECTORIZED:
+
+        for n in range(1, RIEMANN_ITER_LIMIT):
+            NK1_array[n, 0] = NK1_array[n - 1, 0] / 2
+            NK1_array[n, 1:(n+1)] = (NK1_array[n-1, 0:n] + NK1_array[n-1, 1:(n+1)])/2
+
+        # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
+        for k in range(0, RIEMANN_ITER_LIMIT):
+            NK2_array[k] = ((-1) ** k) * np.sum(NK1_array[k:RIEMANN_ITER_LIMIT, k])
+
+    else:
+        for n in range(1, RIEMANN_ITER_LIMIT):
+            NK1_array[n, 0] = NK1_array[n - 1, 0] / 2
+            for k in range(1, n + 1):
+                # Pascal's triangle, but with an additional divide by 2 at each row.
+                NK1_array[n, k] = (NK1_array[n - 1, k - 1] + NK1_array[n - 1, k]) / 2
+
+        # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
+        for k in range(0, RIEMANN_ITER_LIMIT):
+            tmp_sum = 0
+            for n in range(k, RIEMANN_ITER_LIMIT):
+                tmp_sum += NK1_array[n, k]  # comb(n,k) / (2 ** (n+1))
+            NK2_array[k] = ((-1) ** k) * tmp_sum
+
+    delay = time.time() - t1
+    print("Precomputed eta coefficients in " + "{:1.4f}".format(delay) + " seconds")
 
 
 def eta_zeta_scale(v):
@@ -102,17 +121,21 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
             t1 = time.time()
             precompute_denom(s)
             delay = time.time() - t1
-            print("Precomputed denominators in " + "{:1.4f}".format(delay) + " seconds")
+            print("Precomputed powers in " + "{:1.4f}".format(delay) + " seconds")
             row_count = 0
             t1 = time.time()
             # When doing heatmaps, s is initially a 2d ndarray, which behaves like a list of 1d ndarrays.
             # The following will call itself recursively for each item (row), and build a list of 1d arrays
             out = [0.0 if quit_computation_flag else riemann_row(x, do_eta=do_eta) for x in s]
-            # Convert list of 1d arrays into a single 2d ndarray
-            out = np.stack(out)
-            elapsed_time = time.time() - t1
+
             entry_count -= 1
-            return out
+            if not quit_computation_flag:
+                elapsed_time = time.time() - t1
+                # Convert list of 1d arrays into a single 2d ndarray
+                return np.stack(out)
+            else:
+                elapsed_time = 0
+                return None
 
     #
     # Either have single value, or 1d array.
@@ -121,7 +144,8 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     #
     if np.size(s) > 1.0:
         # Handle 1d array using vectorized operations (but without cached denominators)
-        return riemann_row_vectorized(s, -1, do_eta, False, False)
+        return riemann_row_non_negative(s, row_num=-1,
+                                        do_eta=do_eta, USE_CACHED_FUNC=False)
     #        return [riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
 
     # If we are here, we are computing for a single value. Use slow method, without vectorization
@@ -198,9 +222,39 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     return cum_sum
 
 
-# Handles one row of 2d matrix. If inputs have both positive and negative real portions, will
-# split into two separate arrays.
-def riemann_row(s, do_eta, USE_CACHED_DENOM=True):
+#
+# For c = a + bi, calculates sin(c)/exp(abs(b))
+#
+# This generally has magnitude ~1.0, avoiding the problem where sin(c) blows up for large b.
+#
+# This is based on the identity:
+#
+# sin(a+bi) = sin(a)cosh(y) + icos(x)sinh(y)
+#
+# which expands to:
+#
+# sin(a+bi) = e^abs(b)[sin(a)[1+e^(-2abs(b))]/2 + icos(a)sign(b)[1-e^(-2abs(b)]/2
+#
+def sin2(c):
+    a = np.real(c)
+    b = np.imag(c)
+    return np.sin(a)*(1+np.exp(-2*np.abs(b)))/2 + 1j*np.cos(a)*np.sign(b)*(1-np.exp(-2*np.abs(b)))/2
+
+
+#
+# For c = a + bi, calculate log(sin(c))
+#
+# Because sin(c) blows up for large b, we use the sin2 function above, which pulls out the large e^abs(b)
+# term. We can then calculate log(sin(c)) using the identity:
+#
+# log(sin(c)) = log[e^abs(b) * sin2(c)] = abs(b) + log(sin2(c))
+def logsin(c):
+    return np.abs(np.imag(c)) + np.log(sin2(c))
+
+# Handles one row of 2d matrix using optional cached powers.
+# If inputs have both positive and negative real portions, will call riemann_row_non_negative with
+# negative s replaced by 1-s, and then apply functional equation to correct those values
+def riemann_row(s, do_eta=False, USE_CACHED_DENOM=True, use_log=False):
     global row_count, array_zero_split
 
     # We have 1D vector. Update progress bar, then call Riemann for individual values
@@ -211,26 +265,43 @@ def riemann_row(s, do_eta, USE_CACHED_DENOM=True):
         if computation_progress_callback is not None:
             computation_progress_callback(np.size(s) * 50)
 
-    # RiemannArray requires elements to either be all negative or all non-negative. So we split s into two arrays.
-    neg_array = s[0:array_zero_split]
-    pos_array = s[array_zero_split:len(s)]
+    # RiemannArray requires elements to be non-negative. So we split s into two arrays.
+    s0 = s[0:array_zero_split]
+    s1 = s[array_zero_split:len(s)]
 
     # Transform negative values into 1-s, and make new array
-    in_vals = np.concatenate(((1 - neg_array), pos_array))
+    in_vals = np.concatenate(((1 - s0), s1))
 
-    out_vals = riemann_row_vectorized(in_vals, row_count - 1, do_eta=do_eta, USE_CACHED_FUNC=USE_CACHED_DENOM)
+    out_vals = riemann_row_non_negative(in_vals, row_count - 1, do_eta=do_eta, USE_CACHED_FUNC=USE_CACHED_DENOM)
 
     if array_zero_split > 0:
-
         out_vals[0:array_zero_split] = np.conj(out_vals[0:array_zero_split])
-        s0 = neg_array
 
+    if use_log:
+        out_vals = np.log(out_vals)
+
+        if array_zero_split > 0:
+            # Use functional equation to correct results for Re[s] < 0
+            if do_eta:
+                out_vals[0:array_zero_split] += np.log(-2) + np.log(s0) \
+                                                + loggamma(- s0) + logsin(-s0 * np.pi / 2) \
+                                                + np.log(np.pi) * (s0 - 1) \
+                                                + np.log(1 - np.power(2, s0 - 1)) \
+                                                - np.log(1 - np.power(2, s0))
+            else:
+                out_vals[0:array_zero_split] += loggamma(1 - s0) + logsin(s0 * np.pi / 2) \
+                                                + np.log(np.pi) * (s0 - 1) + np.log(2) * s0
+
+        out_vals = np.real(out_vals) + 1j * (np.remainder(np.imag(out_vals) + np.pi, 2 * np.pi) - np.pi)
+        return out_vals
+
+    if array_zero_split > 0:
         # Use functional equation to correct results for Re[s] < 0
         if do_eta:
             out_vals[0:array_zero_split] *= -2 * s0 \
-                   * gamma(- s0) * np.sin(-s0 * np.pi / 2) \
-                   * np.power(np.pi, s0 - 1) \
-                   * (1 - np.power(2, s0 - 1)) / (1 - np.power(2, s0))
+                                            * gamma(- s0) * np.sin(-s0 * np.pi / 2) \
+                                            * np.power(np.pi, s0 - 1) \
+                                            * (1 - np.power(2, s0 - 1)) / (1 - np.power(2, s0))
         else:
             if USE_CACHED_FUNC:
                 try:
@@ -240,35 +311,36 @@ def riemann_row(s, do_eta, USE_CACHED_DENOM=True):
                     # Theoretically we could also cache sin since sin(a+bi) = sin(a)cosh(b) + i*cos(a)sinh(b), but
                     # that requires generating 4 more pre-calculated arrays, which feels like a pain
                     out_vals[0:array_zero_split] *= gamma(1 - s0) * np.sin(s0 * np.pi / 2) \
-                           * pre_computed_func1_mag * pre_computed_func1_phase[row_count - 1]
+                                                    * cached_pi_power_mag * cached_pi_power_phase[row_count - 1]
                 except:
                     print("error")
             else:
                 # Old method is foolproof, and only slightly slower
                 out_vals[0:array_zero_split] *= gamma(1 - s0) * np.sin(s0 * np.pi / 2) \
-                       * np.power(np.pi, s0 - 1) \
-                       * np.power(2, s0)  # This can be combined with above exponential. Keep this way for readability
+                                                * np.power(np.pi, s0 - 1) \
+                                                * np.power(2,
+                                                           s0)  # This can be combined with above exponential. Keep this way for readability
+
+    if use_log:
+        return np.log(out_vals)
 
     #            a1 = riemann_array(neg_array, row_count - 1, do_eta=do_eta)
     #            a2 = riemann_array(pos_array, row_count - 1, do_eta=do_eta)
     return out_vals
 
 
-pre_computed_denom_mag: np.ndarray  # 2d array. First arg is k, second is mesh col #. (k+1)^(Re(-s))
-pre_computed_denom_phase = []  # 2d array. First arg is mesh row #, second is k. (k+1)^(Re(-(1-s)))
-pre_computed_func1_mag: np.ndarray  # (2*pi)^Re(s) / pi for s < 0
-pre_computed_func1_phase: np.ndarray  # phase for above, for s < 0
-pre_computed_func2_mag: np.ndarray  # n/a
-pre_computed_func2_phase: np.ndarray  # n/a
+cached_powers_mag: np.ndarray  # 2d array. First arg is k, second is mesh col #. (k+1)^(Re(-s))
+cached_powers_phase = []  # 2d array. First arg is mesh row #, second is k. (k+1)^(Re(-(1-s)))
+cached_pi_power_mag: np.ndarray  # (2*pi)^Re(s) / pi for s < 0
+cached_pi_power_phase: np.ndarray  # phase for above, for s < 0
 
 
 # Precomputes denominator coefficients, resulting in a roughly 4x speedup
 # Assume mesh is a 2d ndarray, i.e. a list of lists
 def precompute_denom(mesh):
     global array_zero_split, \
-        pre_computed_func1_mag, pre_computed_func1_phase, \
-        pre_computed_func2_mag, pre_computed_func2_phase, \
-        pre_computed_denom_mag, pre_computed_denom_phase
+        cached_pi_power_mag, cached_pi_power_phase, \
+        cached_powers_mag, cached_powers_phase
 
     # Computes (k + 1) ^ -s for all s in grid.
     # Works by decomposing s = a + bi, then precomputing the following:
@@ -280,19 +352,18 @@ def precompute_denom(mesh):
     # Find where Re(s) switches to positive
     array_zero_split = bisect.bisect_left(np.real(row1), 0)
     # Put all negative values (< 0) in one array
-    row1_neg_vals = row1[0:array_zero_split]
+    s0 = row1[0:array_zero_split]
     # Put all non-negative (>= 0) values in a second array
-    row1_pos_vals = row1[array_zero_split:len(row1)]
+    s1 = row1[array_zero_split:len(row1)]
 
     # Delete any previous coefficients
-    pre_computed_denom_phase.clear()
-    pre_computed_denom_mag = np.empty((RIEMANN_ITER_LIMIT, len(row1)), dtype=np.complex)
+    cached_powers_phase.clear()
+    cached_powers_mag = np.empty((RIEMANN_ITER_LIMIT, len(row1)), dtype=np.complex)
 
     for k in range(0, RIEMANN_ITER_LIMIT):
         # Denominator magnitudes as a function of x. This array is sorted by k, then column
-        pre_computed_denom_mag[k] = np.concatenate((np.power(k + 1, -np.real(1 - row1_neg_vals)),
-                                                   np.power(k + 1, -np.real(row1_pos_vals))))
-
+        cached_powers_mag[k] = np.concatenate((np.power(k + 1, -np.real(1 - s0)),
+                                               np.power(k + 1, -np.real(s1))))
 
     col1 = np.empty(len(mesh), dtype=np.complex)
     for row in range(0, len(mesh)):
@@ -300,51 +371,46 @@ def precompute_denom(mesh):
         col1[row] = mesh[row][0]
         s = col1[row]
         k_list = np.linspace(1, RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT)
-        pre_computed_denom_phase.append(np.power(k_list, -1j * np.imag(s)))
-#        pre_computed_denom_left_phase.append(np.power(k_list, -1j * np.imag(1 - s)))
+        cached_powers_phase.append(np.power(k_list, -1j * np.imag(s)))
 
     # Left half plane [(2*pi) ^ s] / pi
-    pre_computed_func1_mag = np.power(2 * np.pi, np.real(row1_neg_vals)) / np.pi  # Magnitude is function of x
-    pre_computed_func1_phase = np.power(2 * np.pi, 1j * np.imag(col1))  # Phase is function of y
+    cached_pi_power_mag = np.power(2 * np.pi, np.real(s0)) / np.pi  # Magnitude is function of x
+    cached_pi_power_phase = np.power(2 * np.pi, 1j * np.imag(col1))  # Phase is function of y
+
+
+USE_MATRIX_MULT = True
+
 
 #
-# Calculate Riemann zeta function for a 1D ndarray (i.e. vector) using vectorized operations
-# and (optionally) pre-computed (cached) denominator array.
+# Calculate Riemann zeta function for a 1D ndarray (i.e. vector) of non-negative values.
 #
-# Vectorized operations can be used with any input in which elements are all non-negative, or all
-# negative (i.e. not a mix of neg and non-neg).
+# Uses vectorized operations and (optional) pre-computed (cached) power array.
+# Note that this does not call gamma(), hence will work for very large input values
 #
-# Cached denominator usage requires input to meet one additional criterion, that elements are
-# in same order as in the cached denominator arrays
-#
-def riemann_row_vectorized(s,
-                           row_num,  # Which row of mesh grid? 0 is bottom
-                           do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
-                           left_half_plane=False,
-                           # True if called RECURSIVELY for Re(s) < 0. False otherwise, even if Re(s)<0
-                           USE_CACHED_FUNC=True):
+def riemann_row_non_negative(s,
+                             row_num,  # Which row of mesh grid? 0 is bottom
+                             do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
+                             USE_CACHED_FUNC=True):
     global quit_computation_flag
 
     if len(s) == 0:
         return []
 
-    USE_MATRIX_MULT = True
-
     if USE_CACHED_FUNC:
 
         if USE_MATRIX_MULT:
             # Dot product is much faster than loop
-            cum_sum = np.dot(np.multiply(NK2_array, pre_computed_denom_phase[row_num]),
-                             pre_computed_denom_mag)
+            cum_sum = np.dot(np.multiply(NK2_array, cached_powers_phase[row_num]),
+                             cached_powers_mag)
         else:
-            phase = pre_computed_denom_phase[row_num]
+            phase = cached_powers_phase[row_num]
             cum_sum = 0
             for k in range(0, RIEMANN_ITER_LIMIT):
-                cum_sum += NK2_array[k] * pre_computed_denom_mag[k] * phase[k]
+                cum_sum += NK2_array[k] * cached_powers_mag[k] * phase[k]
         if do_eta:
             return cum_sum
         else:
-            return cum_sum / (1 - 2 * pre_computed_denom_mag[1] * pre_computed_denom_phase[row_num][1])
+            return cum_sum / (1 - 2 * cached_powers_mag[1] * cached_powers_phase[row_num][1])
 
     else:
         # Old version: about 10x slower since we recompute exponential every time
@@ -360,66 +426,24 @@ def riemann_row_vectorized(s,
             return cum_sum / (1 - np.power(2, 1 - s))
 
 
-#
-# Currently not used.
-#
-# Prototype of simplified method, in which we no longer need to split cached arrays into
-# neg and pos.
-#
-# Calculate Riemann zeta function for a 1D ndarray (i.e. vector) using vectorized operations
-# and (optionally) pre-computed (cached) denominator array.
-#
-# All inputs must have Re[s] >= 0, to assure convergence.
-def riemann_vectorized_positive(s,
-                                row_num,  # Which row of mesh grid? 0 is bottom
-                                do_eta=False):
-    global quit_computation_flag
-
-    if len(s) == 0:
-        return []
-
-    USE_MATRIX_MULT = True
-    USE_CACHED_FUNC = False
-
-    if USE_CACHED_FUNC:
-        if USE_MATRIX_MULT:
-            # Dot product is much faster than loop
-            cum_sum = np.dot(np.multiply(NK2_array, cached_denom_phase[row_num]),
-                             cached_denom_mag)
-        else:
-            phase = cached_denom_phase[row_num]
-            cum_sum = 0
-            for k in range(0, RIEMANN_ITER_LIMIT):
-                cum_sum += NK2_array[k] * cached_denom_mag[k] * phase[k]
-        if do_eta:
-            return cum_sum
-        else:
-            return cum_sum / (1 - 2 * cached_denom_mag[1] * cached_denom_phase[row_num][1])
-    else:
-        # Old non-cached version: about 10x slower since we recompute exponential every time
-        # We still benefit from vectorized operations, which gave 100x improvement.
-        cum_sum = [0 + 0j] * len(s)
-        for k in range(0, RIEMANN_ITER_LIMIT):
-            # Power calculation is vectorized, but not cached
-            cum_sum += NK2_array[k] * np.power(k + 1, -s)
-
-        if do_eta:
-            return cum_sum
-        else:
-            # Scale factor converts Dirichlet eta function to Riemann zeta function
-            return cum_sum / (1 - np.power(2, 1 - s))
-
-
 # Return log of riemann(s). Input must be 1d array or single value, with Re[s] >= 0 for all s
-# Uses vectorized operations, but not cached denominators, since input will not generally have predictable
-# structure
+# Uses vectorized operations, and for 2d arrays also uses cached denominators
 def log_riemann(s, do_eta=False):
-    global row_count
+    global row_count, elapsed_time
 
     if type(s) == np.ndarray:
         if s.ndim == 2:
+            t1 = time.time()
+            precompute_denom(s)
+            delay = time.time() - t1
+            print("Precomputed powers in " + "{:1.4f}".format(delay) + " seconds")
             row_count = 0
-            out = [0 if quit_computation_flag else log_riemann(x) for x in s]
+            t1 = time.time()
+
+            row_count = 0
+            out = [0 if quit_computation_flag else riemann_row(x, do_eta=False, use_log=True) for x in s]
+
+            elapsed_time = time.time() - t1
             return np.stack(out)
 
     # Have 1D array, most likely
@@ -436,7 +460,7 @@ def log_riemann(s, do_eta=False):
         s[np.real(s) < 0] = 0
         cum_sum = [0 + 0j] * len(s)
     else:
-        s = float(s)     # np.power can't handle negative integer exponents, so make sure it is float
+        s = float(s)  # np.power can't handle negative integer exponents, so make sure it is float
         cum_sum = 0 + 0j
 
     for k in range(0, RIEMANN_ITER_LIMIT):
@@ -469,7 +493,7 @@ def riemann_symmetric(s, use_log=False):
             # If we were interrupted, we will have a "ragged" list, in which some elements are a single "0",
             # while others are a full length vector. Don't try to multiply by anything, as array sizes won't match.
             return r
-        return (1/2) * s * (s-1) * r * gamma(s / 2) * (np.pi ** (-s / 2))
+        return 0.5 * s * (s - 1) * r * gamma(s / 2) * (np.pi ** (-s / 2))
 
     # For very large abs(s), we want to calculate log
 
@@ -479,8 +503,7 @@ def riemann_symmetric(s, use_log=False):
     #     log(c) = log(r) + it
 
     # First remove values with Re[s] < 0
-    s[np.real(s) < 0] = 0
-    return np.log(0.5) + np.log(s) + np.log(s-1) + log_riemann(s) + loggamma(s / 2) - s * np.log(np.pi) / 2
+    return np.log(0.5) + np.log(s) + np.log(s - 1) + log_riemann(s) + loggamma(s / 2) - s * np.log(np.pi) / 2
 
 
 # Calculate gamma(s) while also updating progress bar

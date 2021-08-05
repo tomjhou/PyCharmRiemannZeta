@@ -253,11 +253,12 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
     if settings.oversample:
         density = density * 4
 
-    # Create mesh and calculate function at each point
-    last_result, mesh_points = calculate_domain(f, re, im, density)
+    # Create mesh and calculate function at each point. If canceled, will get None and 0
+    result, mesh_points = calculate_domain(f, re, im, density)
 
     # Map result to colors and plot
     if mesh_points > 0:
+        last_result = result
         map_color(last_result, re, im, title)
 
 
@@ -330,7 +331,7 @@ def calculate_domain(f, re=(-1, 1), im=(-1, 1), density=200):  # density is numb
     if rm.quit_computation_flag:
         print("Calculation cancelled by user after " + str(points_processed) + " of " +
               str(mesh_points) + " points = " + '{:1.2f}'.format(100 * points_processed / mesh_points) + " %")
-        return 0
+        return (None, 0)
 
     # Get time delay from rm.
     delay = rm.elapsed_time  # time.time() - t1

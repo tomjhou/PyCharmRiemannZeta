@@ -133,14 +133,6 @@ class WinHeatMap:
         self.spin3.bind('<FocusOut>', self.do_spin3_event)
         #            self.spin1.bind('<FocusIn>', do_spin1_event)
 
-        # Aspect ratio checkbox
-        rh.settings.keep_square = tk.IntVar(win)
-        self.checkbox_keep_square = ttk.Checkbutton(frame_spinner,
-                                                    text="1:1 aspect ratio",
-                                                    command=do_square,
-                                                    variable=rh.settings.keep_square)
-        self.checkbox_keep_square.pack(side=tk.LEFT)
-
         #
         # Row of check boxes controlling critical strip plotting, positive y plotting,
         # and auto-recalculation
@@ -156,6 +148,15 @@ class WinHeatMap:
                                                        variable=self.var_critical_strip)
         self.checkbox_critical_strip.pack(side=tk.LEFT)
 
+        # Aspect ratio checkbox
+        rh.settings.keep_square = tk.IntVar(win)
+        self.checkbox_keep_square = ttk.Checkbutton(frame_checks_plot,
+                                                    text="1:1 aspect ratio",
+                                                    command=do_square,
+                                                    variable=rh.settings.keep_square)
+        self.checkbox_keep_square.pack(side=tk.LEFT)
+
+
         # Positive y only
 #        self.var_top_only = tk.IntVar(win)
 #        self.checkbox_top_only = ttk.Checkbutton(frame_checks_plot,
@@ -169,7 +170,7 @@ class WinHeatMap:
         #
         self.frame_buttons = tk.Frame(frame_top_controls)
         self.frame_buttons.pack()  # fill=tk.X)
-        self.button_recalculate = ttk.Button(self.frame_buttons, text="Recalculate", command=self.do_recalculate)
+        self.button_recalculate = ttk.Button(self.frame_buttons, text="Recalculate", command=self.recalculate)
         self.button_recalculate.pack(side=tk.LEFT)
         self.button_cancel = ttk.Button(self.frame_buttons, text="Cancel", command=self.do_cancel)
         self.button_cancel.pack(side=tk.LEFT)
@@ -296,7 +297,7 @@ class WinHeatMap:
         val = self.slider1.get()
         self.do_density_slider(val)
         if rh.settings.auto_recalculate:
-            self.do_recalculate()
+            self.recalculate()
 
     def do_density_slider(self, val):
         # Note: val is a string when called during mouse move, and a float when
@@ -313,7 +314,7 @@ class WinHeatMap:
     def do_sliderA_button_release(self, _event):
         self.do_parameterA(self.sliderA.get())
         if rh.settings.auto_recalculate:
-            self.do_recalculate()
+            self.recalculate()
 
     def do_parameterA(self, val):
         rh.settings.parameterA = float(val)
@@ -322,7 +323,7 @@ class WinHeatMap:
     def do_sliderB_button_release(self, _event):
         self.do_parameterB(self.sliderB.get())
         if rh.settings.auto_recalculate:
-            self.do_recalculate()
+            self.recalculate()
 
     def do_parameterB(self, val):
         rh.settings.parameterB = float(val)
@@ -342,7 +343,7 @@ class WinHeatMap:
         rh.rm.RIEMANN_ITER_LIMIT = val_int
         rh.rm.precompute_coeffs()
         if rh.settings.auto_recalculate:
-            self.do_recalculate()
+            self.recalculate()
 
     def update_iter_label(self, val):
         # Callback associated with slider/scale object
@@ -380,9 +381,9 @@ class WinHeatMap:
             self.slider_iter.set(str(val_int))
             rh.rm.RIEMANN_ITER_LIMIT = val_int
             if rh.settings.auto_recalculate:
-                self.do_recalculate()
+                self.recalculate()
 
-    def do_recalculate(self):
+    def recalculate(self):
         # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
         wid = rh.settings.last_selection
         if wid < 0:
@@ -422,7 +423,7 @@ class WinHeatMap:
                 range2 = float_val
                 spin2.set(val)
             if rh.settings.auto_recalculate:
-                self.do_recalculate()
+                self.recalculate()
 
     def do_spin1_event(self, _event):
         # User has moved focus out of spinner, or hit enter key
@@ -435,7 +436,7 @@ class WinHeatMap:
                 rh.settings.plot_range_x = float_val
                 self.spin2.set(val)
             if rh.settings.auto_recalculate:
-                self.do_recalculate()
+                self.recalculate()
 
     def do_spin2(self):
         # User has clicked on spinner arrows
@@ -457,7 +458,7 @@ class WinHeatMap:
                 rh.settings.plot_range_y = float_val
                 self.spin1.set(val)
             if rh.settings.auto_recalculate:
-                self.do_recalculate()
+                self.recalculate()
 
     def do_spin3(self):
         # User has clicked on spinner arrows
@@ -473,7 +474,7 @@ class WinHeatMap:
             rh.settings.plot_y_start = float_val
             # Only update if it has changed.
             if rh.settings.auto_recalculate:
-                self.do_recalculate()
+                self.recalculate()
 
     def do_checkbox_phase_only(self):
         # Handle user checking-unchecking this box
@@ -482,8 +483,7 @@ class WinHeatMap:
             # If checking, then uncheck the other one ... should we use a radio button instead?
             rh.settings.magnitude_only = 0
             self.var_magnitude_only.set(0)
-        if rh.settings.auto_recalculate:
-            self.do_remap_color()
+        self.do_remap_color()
 
     def do_checkbox_magnitude_only(self):
         # Handle user checking-unchecking this box
@@ -492,25 +492,22 @@ class WinHeatMap:
             # If checking, then uncheck the other
             rh.settings.phase_only = 0
             self.var_phase.set(0)
-        if rh.settings.auto_recalculate:
-            self.do_remap_color()
+        self.do_remap_color()
 
     def do_checkbox_oversample(self):
         # Handle user checking-unchecking this box
         rh.settings.oversample = self.var_oversample.get()  # not rh.Settings.oversample
         if rh.settings.auto_recalculate:
-            self.do_recalculate()
+            self.recalculate()
 
     def do_checkbox_auto_recalculate(self):
         # Handle user checking-unchecking this box
         rh.settings.auto_recalculate = self.var_auto_recalculate.get()  # not rh.Settings.auto_recalculate
-        if rh.settings.auto_recalculate:
-            self.do_recalculate()
 
     def do_critical_strip(self):
         rh.settings.critical_strip = self.var_critical_strip.get()
         if rh.settings.auto_recalculate:
-            self.do_recalculate()
+            self.recalculate()
 
     def make_heatmap_gui(self):
         # User lower value to speed up calculations
