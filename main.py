@@ -94,7 +94,7 @@ print ("Created main window with geometry " + root.winfo_geometry())
 # Because matplotlib.close() will terminate this loop, we wrap it in another loop
 while not quit_flag:
     tk.mainloop()
-    print("Mainloop exited.", end="")
+    print("Mainloop exited.")
     if not quit_flag:
         print(" Reentering now.")
 
