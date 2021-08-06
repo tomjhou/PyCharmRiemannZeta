@@ -390,7 +390,8 @@ USE_MATRIX_MULT = True
 def riemann_row_non_negative(s,
                              row_num,  # Which row of mesh grid? 0 is bottom
                              do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
-                             USE_CACHED_FUNC=True):
+                             USE_CACHED_FUNC=True,
+                             is_vertical=False):  # True if evenly spaced along vertical line
     global quit_computation_flag
 
     if len(s) == 0:
@@ -416,18 +417,36 @@ def riemann_row_non_negative(s,
         # Old version: about 10x slower since we recompute exponential every time
         # We still benefit from vectorized operations, which gave 100x improvement.
 
-        if False:  # USE_MATRIX_MULT:
+        if is_vertical:  #
             # Use 2D vectorization, to try to speed up further
+            real_part = np.real(s[0])
 
             # Create column vector of numbers 1, 2, ... RIEMANN_ITER_LIMIT
             bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
-            # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
-            bases = np.repeat(bases, len(s), axis=1)
-            # Raise all numbers in 2D array to each value in s. In matlab, we would do bsxfun(@power, bases, s)
-            # on the 1D arrays, and would not need extra step of creating 2D array.
-            powers = np.power(bases, -s)
-            # Now do matrix product
-            cum_sum = np.dot(NK2_array, powers)
+            bases_real = np.power(bases, -real_part)
+
+            if np.mod(len(s),2) == 0:
+                half_s = int(len(s)/2)
+                # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
+                bases2 = np.repeat(bases, half_s, axis=1)
+                im_part = np.imag(s[0:half_s])
+                # Raise all numbers in 2D array to each value in s. In matlab, we would do bsxfun(@power, bases, s)
+                # on the 1D arrays, and would not need extra step of creating 2D array.
+                powers1 = np.power(bases2, -im_part * 1j)
+                imag_diff = np.imag(s[half_s]) - im_part[0]  # Imaginary diff
+                # Now do matrix product
+                cum_sum1 = np.dot(np.multiply(NK2_array, bases_real.flatten()), powers1)
+                bases_real = np.multiply(bases_real, np.power(bases, 1j* imag_diff))
+                cum_sum2 = np.dot(np.multiply(NK2_array, bases_real.flatten()), powers1)
+                cum_sum = np.concatenate((cum_sum1, cum_sum2))
+            else:
+                # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
+                bases2 = np.repeat(bases, len(s), axis=1)
+                # Raise all numbers in 2D array to each value in s. In matlab, we would do bsxfun(@power, bases, s)
+                # on the 1D arrays, and would not need extra step of creating 2D array.
+                powers = np.power(bases2, -np.imag(s) * 1j)
+                # Now do matrix product
+                cum_sum = np.dot(np.multiply(NK2_array, bases_real), powers)
 
             # Strangely, although np.dot() is much faster than loop, the 2D vectorized np.power()
             # is actually very slow, and takes LONGER than the loop below.
@@ -450,7 +469,7 @@ def riemann_row_non_negative(s,
 
 # Return log of riemann(s). Input must be 1d array or single value, with Re[s] >= 0 for all s
 # Uses vectorized operations, and for 2d arrays also uses cached denominators
-def log_riemann(s, do_eta=False):
+def log_riemann(s, do_eta=False, is_vertical=False):
     global row_count, elapsed_time
 
     if type(s) == np.ndarray:
@@ -472,7 +491,7 @@ def log_riemann(s, do_eta=False):
     if np.size(s) > 1:
         # Remove values with Re[s] < 0 for vector
         s[np.real(s) < 0] = 0
-        cum_sum = riemann_row_non_negative(s, 0, do_eta=False, USE_CACHED_FUNC=False)
+        cum_sum = riemann_row_non_negative(s, 0, do_eta=False, USE_CACHED_FUNC=False, is_vertical=is_vertical)
         return np.log(cum_sum)
     else:
         # Have single value
@@ -493,11 +512,11 @@ def log_riemann(s, do_eta=False):
 #
 # When multiplied by an additional (1/2)s(s-1), we get the riemann xi function
 #
-def riemann_symmetric(s, use_log=False):
+def riemann_symmetric(s, use_log=False, is_vertical=False):
     if not use_log:
 
         if np.mean(abs(s)) > 400:
-            r = riemann_symmetric(s, True)
+            r = riemann_symmetric(s, use_log=True, is_vertical=is_vertical)
 
             # Compress magnitude range by 10-fold
             r = r - np.real(r) * 0.9
@@ -518,7 +537,7 @@ def riemann_symmetric(s, use_log=False):
     #     log(c) = log(r) + it
 
     # First remove values with Re[s] < 0
-    return np.log(0.5) + np.log(s) + np.log(s - 1) + log_riemann(s) + loggamma(s / 2) - s * np.log(np.pi) / 2
+    return np.log(0.5) + np.log(s) + np.log(s - 1) + log_riemann(s, is_vertical=is_vertical) + loggamma(s / 2) - s * np.log(np.pi) / 2
 
 
 # Calculate gamma(s) while also updating progress bar

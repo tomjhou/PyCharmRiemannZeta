@@ -64,7 +64,7 @@ show()
 #     log(abs(c)) = Re(log(c))
 
 t0 = time.time()
-y_log = rm.riemann_symmetric(s, use_log=True) - np.real(loggamma(s / 2))
+y_log = rm.riemann_symmetric(s, use_log=True, is_vertical=True) - np.real(loggamma(s / 2))
 y = np.real(np.exp(y_log) / (ax * ax + 0.25))
 plt.plot(ax, y, linewidth=1)
 delay = time.time() - t0
@@ -72,7 +72,7 @@ print("Plotted values along critical line Re[s]=0.5 in %1.2f seconds" % delay)
 show()
 
 # Calculate at line Re[s] = offset
-y2_log = np.log(np.pi) * (offset / 2) + rm.riemann_symmetric(s2, use_log=True) - np.real(loggamma(s2 / 2))
+y2_log = np.log(np.pi) * (offset / 2) + rm.riemann_symmetric(s2, use_log=True, is_vertical=True) - np.real(loggamma(s2 / 2))
 y2 = np.real(np.exp(y2_log) / (ax * ax + offset * offset))
 plt.plot(ax, -y2, linewidth=1)
 delay = time.time() - t0 - delay
