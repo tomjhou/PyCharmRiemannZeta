@@ -1,13 +1,10 @@
-import tkinter as tk
-from tkinter import ttk
+
 import matplotlib as mpl
-import platform
-from os import environ
+mpl.use('TKAgg')
 
 from heatmap_gui import *
 
 quit_flag = False
-mpl.use('TKAgg')
 
 # Gaps between various menu windows
 PADDING_PIXELS = 5
