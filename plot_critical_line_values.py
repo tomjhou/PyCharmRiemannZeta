@@ -66,9 +66,10 @@ show()
 t0 = time.time()
 y_log = rm.riemann_symmetric(s, use_log=True, is_vertical=True) - np.real(loggamma(s / 2))
 y = np.real(np.exp(y_log) / (ax * ax + 0.25))
-plt.plot(ax, y, linewidth=1)
 delay = time.time() - t0
-print("Plotted values along critical line Re[s]=0.5 in %1.2f seconds" % delay)
+print("Calculated values along critical line Re[s]=0.5 in %1.2f seconds" % delay)
+
+plt.plot(ax, y, linewidth=1)
 show()
 
 # Calculate at line Re[s] = offset
