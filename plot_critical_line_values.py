@@ -11,12 +11,12 @@ import riemann_math as rm
 if __name__ == "__main__":
     print("Done importing")
 
-height = 4000
+height = 8000
 offset = 5
 gap = 0.1
 
-if rm.RIEMANN_ITER_LIMIT < height:
-    rm.RIEMANN_ITER_LIMIT = height
+if rm.RIEMANN_ITER_LIMIT < height * 1.5:
+    rm.RIEMANN_ITER_LIMIT = height * 1.5
 
 rm.precompute_coeffs()
 print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))

@@ -381,33 +381,45 @@ def precompute_denom(mesh):
 USE_MATRIX_MULT = True
 bases = []
 powers = []
+imag_part = []
+MAX_MEMORY = 200000000  # max # of complex elements in array
 
-#
-# Pre-computes k^imag(s) for k = 1, 2, 3, ... ITER_LIMIT
-#
 def make_powers(s):
-    global bases, powers
+    global powers, bases, imag_part
 
     len_s = len(s)
+    imag_part = np.imag(s)
+
+    if len(bases) != RIEMANN_ITER_LIMIT:
+        bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
+
+    if len_s * RIEMANN_ITER_LIMIT > MAX_MEMORY:
+        len_s = int(MAX_MEMORY / RIEMANN_ITER_LIMIT)
+
     if powers == []:
         powers = np.empty((RIEMANN_ITER_LIMIT, len_s), dtype=complex)
     elif len_s > powers.shape[1]:
         powers = np.empty((RIEMANN_ITER_LIMIT, len_s), dtype=complex)
 
-    if len(bases) != RIEMANN_ITER_LIMIT:
-        bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
+    make_powers2(len_s)
 
-    if len_s == 1:
-        powers[:, 0] = np.power(bases, -1j * np.imag(s)).flatten()
+#
+# Recursively pre-computes k^imag(s) for k = 1, 2, 3, ... ITER_LIMIT
+#
+def make_powers2(limit):
+    global bases, powers
+
+    if limit == 1:
+        powers[:, 0] = np.power(bases, -1j * imag_part[0]).flatten()
         return
 
-    half_s = int(np.ceil(len_s / 2))
-    is_odd = np.mod(len_s, 2) == 1
+    half_s = int(np.ceil(limit / 2))
+    is_odd = np.mod(limit, 2) == 1
 
-    make_powers(s[0:half_s])  # np.power(bases2, -im_part * 1j)
+    make_powers2(half_s)  # np.power(bases2, -im_part * 1j)
 
     # Now calculate second half
-    imag_diff = np.imag(s[half_s]) - np.imag(s[0])  # Imaginary diff
+    imag_diff = imag_part[half_s] - imag_part[0]  # Imaginary diff
     ratios = np.power(bases, -1j * imag_diff)
 
     if is_odd:
@@ -416,7 +428,7 @@ def make_powers(s):
         limit1 = half_s
 
     # Second half of range is obtained by scalar multiplication from the first half
-    powers[:, half_s:len_s] = np.multiply(ratios, powers[:, 0:limit1])
+    powers[:, half_s:limit] = np.multiply(ratios, powers[:, 0:limit1])
 
 
 #
@@ -455,16 +467,32 @@ def riemann_row_non_negative(s,
     else:
 
         if is_vertical:  #
-            # Use 2D vectorization, to try to speed up further
+            # Use pre-computed power table, allowing 2D vectorization, and further speedup
             real_part = np.real(s[0])
 
             # Create column vector of numbers 1, 2, ... RIEMANN_ITER_LIMIT
-            bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
+#            bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
             bases_real = np.power(bases, -real_part)
+            NK2_real_power = np.multiply(NK2_array, bases_real.flatten())
 
             if USE_MATRIX_MULT:
+                len_s = len(s)
 #                powers = make_powers(s)
-                cum_sum = np.dot(np.multiply(NK2_array, bases_real.flatten()), powers)
+                if powers.shape[1] == len_s:
+                    cum_sum = np.dot(np.multiply(NK2_array, bases_real.flatten()), powers)
+                else:
+                    startPoint = 0
+                    width = powers.shape[1]
+                    cum_sum = np.empty(len_s, dtype=complex)
+                    while startPoint <= len_s:
+                        ratios = np.power(bases, (imag_part[startPoint] - imag_part[0]) * 1j)
+                        NK2_power = np.multiply(NK2_real_power, ratios.flatten())
+                        endPoint = startPoint + width
+                        if endPoint <= len_s:
+                            cum_sum[startPoint:endPoint] = np.dot(NK2_power, powers)
+                        else:
+                            cum_sum[startPoint:len_s] = np.dot(NK2_power, powers[:,0:(len_s - startPoint)])
+                        startPoint += width
             else:
                 # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
                 bases2 = np.repeat(bases, len(s), axis=1)
