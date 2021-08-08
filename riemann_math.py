@@ -380,34 +380,43 @@ def precompute_denom(mesh):
 
 USE_MATRIX_MULT = True
 bases = []
+powers = []
 
+#
+# Pre-computes k^imag(s) for k = 1, 2, 3, ... ITER_LIMIT
+#
 def make_powers(s):
-    global bases
+    global bases, powers
 
     len_s = len(s)
+    if powers == []:
+        powers = np.empty((RIEMANN_ITER_LIMIT, len_s), dtype=complex)
+    elif len_s > powers.shape[1]:
+        powers = np.empty((RIEMANN_ITER_LIMIT, len_s), dtype=complex)
+
+    if len(bases) != RIEMANN_ITER_LIMIT:
+        bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
+
     if len_s == 1:
-        p = np.power(bases, -1j * np.imag(s))
-        # Need to reshape to column vector
-        return p
+        powers[:, 0] = np.power(bases, -1j * np.imag(s)).flatten()
+        return
 
     half_s = int(np.ceil(len_s / 2))
     is_odd = np.mod(len_s, 2) == 1
 
-    powers1 = make_powers(s[0:half_s])  # np.power(bases2, -im_part * 1j)
+    make_powers(s[0:half_s])  # np.power(bases2, -im_part * 1j)
 
     # Now calculate second half
     imag_diff = np.imag(s[half_s]) - np.imag(s[0])  # Imaginary diff
     ratios = np.power(bases, -1j * imag_diff)
 
     if is_odd:
-        powers2 = powers1[:, 0:(half_s-1)]
+        limit1 = half_s - 1
     else:
-        powers2 = powers1
+        limit1 = half_s
 
-    powers2 = np.multiply(ratios, powers2)
-
-    p = np.concatenate((powers1, powers2), axis=1)
-    return p
+    # Second half of range is obtained by scalar multiplication from the first half
+    powers[:, half_s:len_s] = np.multiply(ratios, powers[:, 0:limit1])
 
 
 #
@@ -422,7 +431,7 @@ def riemann_row_non_negative(s,
                              USE_CACHED_FUNC=True,
                              is_vertical=False):  # True if evenly spaced along vertical line
     global quit_computation_flag
-    global bases, bases_real
+    global bases, powers
 
     if len(s) == 0:
         return []
@@ -454,7 +463,7 @@ def riemann_row_non_negative(s,
             bases_real = np.power(bases, -real_part)
 
             if USE_MATRIX_MULT:
-                powers = make_powers(s)
+#                powers = make_powers(s)
                 cum_sum = np.dot(np.multiply(NK2_array, bases_real.flatten()), powers)
             else:
                 # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
