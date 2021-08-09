@@ -469,15 +469,11 @@ def riemann_row_non_negative(s,
         if is_vertical:  #
             # Use pre-computed power table, allowing 2D vectorization, and further speedup
             real_part = np.real(s[0])
-
-            # Create column vector of numbers 1, 2, ... RIEMANN_ITER_LIMIT
-#            bases = np.array([np.arange(1, RIEMANN_ITER_LIMIT + 1, 1, dtype=complex)]).T
             bases_real = np.power(bases, -real_part)
             NK2_real_power = np.multiply(NK2_array, bases_real.flatten())
 
             if USE_MATRIX_MULT:
                 len_s = len(s)
-#                powers = make_powers(s)
                 if powers.shape[1] == len_s:
                     cum_sum = np.dot(np.multiply(NK2_array, bases_real.flatten()), powers)
                 else:
@@ -485,7 +481,7 @@ def riemann_row_non_negative(s,
                     width = powers.shape[1]
                     cum_sum = np.empty(len_s, dtype=complex)
                     while startPoint <= len_s:
-                        ratios = np.power(bases, (imag_part[startPoint] - imag_part[0]) * 1j)
+                        ratios = np.power(bases, -(imag_part[startPoint] - imag_part[0]) * 1j)
                         NK2_power = np.multiply(NK2_real_power, ratios.flatten())
                         endPoint = startPoint + width
                         if endPoint <= len_s:
@@ -494,6 +490,7 @@ def riemann_row_non_negative(s,
                             cum_sum[startPoint:len_s] = np.dot(NK2_power, powers[:,0:(len_s - startPoint)])
                         startPoint += width
             else:
+                # Use slower method that requires lots of complex exponential calculations
                 # Replicate this column for each input value, creating a 2D array of size RIEMANN_ITER_LIMT x len(s)
                 bases2 = np.repeat(bases, len(s), axis=1)
                 # Raise all numbers in 2D array to each value in s. In matlab, we would do bsxfun(@power, bases, s)
@@ -569,7 +566,7 @@ def log_riemann(s, do_eta=False, is_vertical=False):
 def riemann_symmetric(s, use_log=False, is_vertical=False):
     if not use_log:
 
-        if np.mean(abs(s)) > 400:
+        if np.max(abs(s)) > 400:
             r = riemann_symmetric(s, use_log=True, is_vertical=is_vertical)
 
             # Compress magnitude range by 10-fold
@@ -612,6 +609,13 @@ def gamma_with_progress(s):
         row_count = 0
         if computation_progress_callback is not None:
             computation_progress_callback(np.size(s) * 50)
+
+    if np.max(np.abs(s)) >= 400:
+        r = loggamma(s)
+        r = r - np.real(r) * 0.9
+        return np.exp(r)
+
+        return
 
     # Call vectorized version
     return gamma(s)

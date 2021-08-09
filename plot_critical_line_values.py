@@ -11,23 +11,27 @@ import riemann_math as rm
 if __name__ == "__main__":
     print("Done importing")
 
-height = 8000
-offset = 5
-gap = 0.1
+imag_start = 1
+imag_end = 15000
+imag_gap = 0.01
 
-if rm.RIEMANN_ITER_LIMIT < height * 1.5:
-    rm.RIEMANN_ITER_LIMIT = height * 1.5
+real_offset = 5
+
+iter_limit = imag_end + 2000
+
+if rm.RIEMANN_ITER_LIMIT < iter_limit:
+    rm.RIEMANN_ITER_LIMIT = iter_limit  # int(height * 3)
 
 rm.precompute_coeffs()
 print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
 # Input vector along critical line Re[s] = 0.5
-imag_part = np.arange(1, height, gap) * 1j
+imag_part = np.arange(imag_start, imag_end, imag_gap) * 1j
 s = imag_part + 0.5
 ax = np.imag(s)  # this is what will be used for x-axis of plot
 
 # Input vector along line Re[s] = 5
-s2 = imag_part + offset
+s2 = imag_part + real_offset
 
 # Make figure now so user doesn't have to stare at blank screen too much longer
 plt.figure()
@@ -77,11 +81,11 @@ plt.plot(ax, y, linewidth=1)
 show()
 
 # Calculate at line Re[s] = offset
-y2_log = np.log(np.pi) * (offset / 2) + rm.riemann_symmetric(s2, use_log=True, is_vertical=True) - np.real(loggamma(s2 / 2))
-y2 = np.real(np.exp(y2_log) / (ax * ax + offset * offset))
+y2_log = np.log(np.pi) * (real_offset / 2) + rm.riemann_symmetric(s2, use_log=True, is_vertical=True) - np.real(loggamma(s2 / 2))
+y2 = np.real(np.exp(y2_log) / (ax * ax + real_offset * real_offset))
 plt.plot(ax, -y2, linewidth=1)
 t3 = time.time()
-print("Plotted values along Re[s] = %1.1f in %1.2f seconds" % (offset, t3 - t2))
+print("Plotted values along Re[s] = %1.1f in %1.2f seconds" % (real_offset, t3 - t2))
 show()
 
 if __name__ == "__main__":
