@@ -105,11 +105,23 @@ def eta_zeta_scale(v):
 # Note that convergence is very poor for Re(s) large and negative. So we use the functional equation
 # for Re(s) < 0.
 #
-def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
+# Can this replace the explicit log_riemann method we wrote at end of this file?
+#
+def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True, use_log=False):
     global row_count, array_zero_split, elapsed_time, entry_count
 
     if np.size(s) > 1:
         if s.ndim == 2:  # Somehow, I get error if I merge the comparisons with "and" and if s is single value or list
+
+            if np.max(np.abs(s)) >= 400 and not use_log:
+                # Switch to log algorithm
+                r = riemann(s, get_array_size=get_array_size, do_eta=do_eta,
+                                   use_zero_for_nan=use_zero_for_nan,
+                                   use_log=True)
+
+                # Compress magnitude range by 100-fold
+                r = r - np.real(r) * 0.99
+                return np.exp(r)
 
             if entry_count >= 1:
                 # Prevent this from running more than once concurrently
@@ -126,7 +138,7 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
             t1 = time.time()
             # When doing heatmaps, s is initially a 2d ndarray, which behaves like a list of 1d ndarrays.
             # The following will call itself recursively for each item (row), and build a list of 1d arrays
-            out = [0.0 if quit_computation_flag else riemann_row(x, do_eta=do_eta) for x in s]
+            out = [0.0 if quit_computation_flag else riemann_row(x, do_eta=do_eta, use_log=use_log) for x in s]
 
             entry_count -= 1
             if not quit_computation_flag:
@@ -144,8 +156,14 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     #
     if np.size(s) > 1.0:
         # Handle 1d array using vectorized operations (but without cached denominators)
-        return riemann_row_non_negative(s, row_num=-1,
+        out_vals = riemann_row_non_negative(s, row_num=-1,
                                         do_eta=do_eta, USE_CACHED_FUNC=False)
+
+        if use_log:
+            return np.log(out_vals)
+
+        return out_vals
+
     #        return [riemann(x, do_eta=do_eta, use_zero_for_nan=use_zero_for_nan) for x in s]
 
     # If we are here, we are computing for a single value. Use slow method, without vectorization
@@ -161,11 +179,11 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
     if np.real(s) < 0:
         # Use functional equation
         if do_eta:
-            return -s * riemann(1 - s, do_eta=do_eta) \
+            return -s * riemann(1 - s, do_eta=do_eta, use_log=use_log) \
                    * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) \
                    * (1 - 2 ** (s - 1)) / (1 - 2 ** s)
         else:
-            return riemann(1 - s, do_eta=do_eta) \
+            return riemann(1 - s, do_eta=do_eta, use_log=use_log) \
                    * gamma(1 - s) * np.sin(s * np.pi / 2) * (np.pi ** (s - 1)) * (2 ** s)
 
     cum_sum = 0 + 0j
@@ -217,7 +235,13 @@ def riemann(s, get_array_size=False, do_eta=False, use_zero_for_nan=True):
             outArray[partial_sum_index] = cum_sum
 
         if get_array_size:
+            if use_log:
+                return np.log(cum_sum), partial_sum_index
+
             return cum_sum, partial_sum_index
+
+    if use_log:
+        return np.log(cum_sum)
 
     return cum_sum
 
@@ -278,6 +302,7 @@ def riemann_row(s, do_eta=False, USE_CACHED_DENOM=True, use_log=False):
         out_vals[0:array_zero_split] = np.conj(out_vals[0:array_zero_split])
 
     if use_log:
+        # If reporting log(Riemann) then also use loggamma and logsin
         out_vals = np.log(out_vals)
 
         if array_zero_split > 0:
@@ -567,10 +592,11 @@ def riemann_symmetric(s, use_log=False, is_vertical=False):
     if not use_log:
 
         if np.max(abs(s)) > 400:
+            # Switch to log algorithm
             r = riemann_symmetric(s, use_log=True, is_vertical=is_vertical)
 
-            # Compress magnitude range by 10-fold
-            r = r - np.real(r) * 0.9
+            # Compress magnitude range by 100-fold
+            r = r - np.real(r) * 0.99
             return np.exp(r)
 
         r = riemann(s)
@@ -587,8 +613,11 @@ def riemann_symmetric(s, use_log=False, is_vertical=False):
     # For any complex c = r * e^(it)
     #     log(c) = log(r) + it
 
-    # First remove values with Re[s] < 0
-    return np.log(0.5) + np.log(s) + np.log(s - 1) + log_riemann(s, is_vertical=is_vertical) + loggamma(s / 2) - s * np.log(np.pi) / 2
+
+
+    return np.log(0.5) + np.log(s) + np.log(s - 1) \
+           + log_riemann(s, is_vertical=is_vertical) \
+           + loggamma(s / 2) - s * np.log(np.pi) / 2
 
 
 # Calculate gamma(s) while also updating progress bar
