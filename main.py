@@ -10,6 +10,7 @@ quit_flag = False
 PADDING_PIXELS = 5
 is_android = False
 
+
 def do_vectors():
     import riemann_vectors
 
@@ -84,7 +85,7 @@ else:
 
 # Force window to show, otherwise winfo_geometry() will return zero
 frame1.update()
-print ("Created main window with geometry " + root.winfo_geometry())
+print("Created main window with geometry " + root.winfo_geometry())
 
 # frame1.tkraise()
 
@@ -96,3 +97,4 @@ while not quit_flag:
         print(" Reentering now.")
 
 print("Finished")
+tk.destroy()

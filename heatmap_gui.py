@@ -512,12 +512,11 @@ def do_main():
     win.make_heatmap_gui()
     root.mainloop()
 
+
 # Make this topmost. This is needed if there is text entry beforehand, which sends focus away from Tkinter objects
 # root.lift()
 # root.attributes('-topmost', True)
 # root.after_idle(root.attributes, '-topmost', False)
 # root.mainloop()
-
 if __name__ == "__main__":
     do_main()
-

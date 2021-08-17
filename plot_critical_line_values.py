@@ -72,7 +72,7 @@ rm.make_powers(s)
 t1 = time.time()
 print("Calculated k^s along critical line Re[s]=0.5 in %1.2f seconds" % (t1 - t0))
 
-y_log = rm.riemann_symmetric(s, use_log=True, is_vertical=True) - np.real(loggamma(s / 2))
+y_log = rm.riemann_symmetric(s, return_log=True, is_vertical=True) - np.real(loggamma(s / 2))
 y = np.real(np.exp(y_log) / (ax * ax + 0.25))
 t2 = time.time()
 print("Calculated values along critical line Re[s]=0.5 in %1.2f seconds" % (t2 - t1))
@@ -81,7 +81,11 @@ plt.plot(ax, y, linewidth=1)
 show()
 
 # Calculate at line Re[s] = offset
-y2_log = np.log(np.pi) * (real_offset / 2) + rm.riemann_symmetric(s2, use_log=True, is_vertical=True) - np.real(loggamma(s2 / 2))
+y2_log = np.log(np.pi)\
+         * (real_offset / 2)\
+         + rm.riemann_symmetric(s2, return_log=True, is_vertical=True)\
+         - np.real(loggamma(s2 / 2))
+
 y2 = np.real(np.exp(y2_log) / (ax * ax + real_offset * real_offset))
 plt.plot(ax, -y2, linewidth=1)
 t3 = time.time()

@@ -56,4 +56,3 @@ class FigureManager:
         plt.pause(0.001)  # Need this or figure won't show
 
         return self.fig_plot
-

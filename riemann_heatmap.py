@@ -7,7 +7,7 @@
 import tkinter
 import typing
 
-import matplotlib as mpl
+# import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
@@ -24,8 +24,8 @@ update_progress_callback: typing.Callable[[float], None]  # = None
 points_processed = 0
 
 # Used when remapping colors but not otherwise recalculating function
-last_result = None       # Large array holding result of previous function evaluation.
-image_object = None      # matplotlib object that can be updated when remapping colors
+last_result = None  # Large array holding result of previous function evaluation.
+image_object = None  # matplotlib object that can be updated when remapping colors
 
 # New button-based GUI selection method
 plot_list = {
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
 class SettingsClass:
     def __init__(self):
-        self.SCALE = .9       # Plot size as a function of screen height
+        self.SCALE = .9  # Plot size as a function of screen height
         self.MESH_DENSITY = 0.65  # Set # of mesh points as a function of "standard"
 
         # Flags for recalculation
@@ -70,7 +70,7 @@ class SettingsClass:
 
         # Boolean variables to control plot domain
         self.critical_strip = False
-        self.keep_square: tkinter.IntVar    # Note that this is a backing variable, so behaves differently
+        self.keep_square: tkinter.IntVar  # Note that this is a backing variable, so behaves differently
 
         # Formula parameters
         self.parameterA = 1.0
@@ -115,7 +115,6 @@ def update_computation_status(increment=1):
 
 # Computes hue corresponding to complex number z. Return value is in range 0 - 1
 def Hcomplex(z):
-
     h = np.angle(z) / (2 * np.pi) + 1  # Add 1 to avoid negative values.
     # mod(h,1) returns remainder, i.e. portion after decimal point
     return np.mod(h, 1)
@@ -241,7 +240,7 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
         # Create new figure, and bind to keypress handler
         aspect = abs(re[1] - re[0]) / (im[1] - im[0])
         fig = fig_mgr.make_plot_fig(aspect, settings.SCALE)
-#        fig.canvas.mpl_connect('key_press_event', on_keypress)
+        #        fig.canvas.mpl_connect('key_press_event', on_keypress)
         settings.last_figure = fig
         fig.canvas.draw()
 
@@ -264,7 +263,6 @@ def plot_domain2(f, re=(-1, 1), im=(-1, 1), title=''):  # Number of points per u
 
 # Convert complex numbers to color and display on screen
 def map_color(w=None, re=None, im=None, title=None, show_axis=True):
-
     global image_object
 
     if w is None:
@@ -293,7 +291,7 @@ def map_color(w=None, re=None, im=None, title=None, show_axis=True):
     if show_axis:
         if (re is not None) and (im is not None):
             image_object = plt.imshow(domc, origin="lower",
-                       extent=[re[0], re[1], im[0], im[1]])
+                                      extent=[re[0], re[1], im[0], im[1]])
         else:
             # No axis values available. Just show image.
             # Unfortunately, this causes axis labels to reset to something generic.
@@ -331,7 +329,7 @@ def calculate_domain(f, re=(-1, 1), im=(-1, 1), density=200):  # density is numb
     if rm.quit_computation_flag:
         print("Calculation cancelled by user after " + str(points_processed) + " of " +
               str(mesh_points) + " points = " + '{:1.2f}'.format(100 * points_processed / mesh_points) + " %")
-        return (None, 0)
+        return None, 0
 
     # Get time delay from rm.
     delay = rm.elapsed_time  # time.time() - t1
@@ -353,7 +351,6 @@ def calculate_domain(f, re=(-1, 1), im=(-1, 1), density=200):  # density is numb
 
 # This works whether s is single number or vector
 def riemann_partial_sum(s, partial_sum_limit):
-
     r_sum = 1
 
     if partial_sum_limit <= 1:
@@ -370,7 +367,7 @@ def riemann_partial_sum(s, partial_sum_limit):
             r_sum -= np.power(x + 1, -s)
 
         if update_progress_callback is not None:
-            update_progress_callback(100*(x+1)/partial_sum_limit)
+            update_progress_callback(100 * (x + 1) / partial_sum_limit)
 
         if rm.quit_computation_flag:
             print("Partial sum cancelled by user after " + str(x) + " of " + str(partial_sum_limit) + " iterations")
@@ -380,7 +377,6 @@ def riemann_partial_sum(s, partial_sum_limit):
 
 
 def make_plot(_selection):
-
     rm.quit_computation_flag = False
 
     if (0 < _selection <= 6) or (_selection == 17):
@@ -409,19 +405,20 @@ def make_plot(_selection):
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='Riemann($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 3:
-        # Standard Riemann function
-        plot_domain2(lambda z: rm.log_riemann(z),
+        # log Riemann function
+        plot_domain2(lambda z: rm.riemann(z, return_log=True),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='log(Riemann($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 5:
-        # Symmetric Riemann function
+        # Xi(s) = Symmetric Riemann function
         plot_domain2(lambda z: rm.riemann_symmetric(z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='xi($z$), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
     elif _selection == 6:
-            plot_domain2(lambda z: rm.riemann_symmetric(z, True),
-                         re=[x_min, x_max], im=[y_min, y_max],
-                         title='log(xi($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
+        # log(Xi(s))
+        plot_domain2(lambda z: rm.riemann_symmetric(z, True),
+                     re=[x_min, x_max], im=[y_min, y_max],
+                     title='log(xi($z$)), iter = ' + str(rm.RIEMANN_ITER_LIMIT))
 
     elif _selection == 8:
         # Gamma(s) function
@@ -440,12 +437,12 @@ def make_plot(_selection):
                      title='cos(a*$z$)+b')
     elif _selection == 12:
         # complex exponential function
-        plot_domain2(lambda z: np.power(a + 1j*b, z),
+        plot_domain2(lambda z: np.power(a + 1j * b, z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='({:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j) ^ $z$')
     elif _selection == 13:
         # complex power function
-        plot_domain2(lambda z: np.power(z, a - 1j*b),
+        plot_domain2(lambda z: np.power(z, a - 1j * b),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='$z$^(' + '{:1.2f}'.format(a) + ' + ' + '{:1.2f}'.format(b) + 'j)')
     elif _selection == 14:
@@ -486,12 +483,12 @@ def make_plot(_selection):
                      title='Eta($z$)')
     elif _selection == 18:
         #  gamma(s / 2) * (np.pi ** (-s / 2))
-        plot_domain2(lambda z: np.power(np.pi, -z/2) * gamma(z/2),
+        plot_domain2(lambda z: np.power(np.pi, -z / 2) * gamma(z / 2),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$/2)*pi^(-$z$/2)')
     elif _selection == 19:
         #  gamma(s) * gamma(1-s)
-        plot_domain2(lambda z: gamma(z) * gamma(1-z),
+        plot_domain2(lambda z: gamma(z) * gamma(1 - z),
                      re=[x_min, x_max], im=[y_min, y_max],
                      title='gamma($z$)*gamma(1-$z$)')
     elif _selection == 20:
