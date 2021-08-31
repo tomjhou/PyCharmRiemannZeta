@@ -44,8 +44,8 @@ plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
 plt.axhline(color='k')
 plt.title('Normalized to gamma magnitude')
 
-
-# plt.show() will pause the GUI, so we use plt.draw() followed by plt.pause() instead.
+# When running in GUI, plots don't show up right away. Normally, you can call plt.show(),
+# but this pauses GUI, so we use plt.draw() followed by brief plt.pause() instead.
 def show():
     plt.draw()
     plt.pause(0.001)
@@ -90,6 +90,25 @@ y2 = np.real(np.exp(y2_log) / (ax * ax + real_offset * real_offset))
 plt.plot(ax, -y2, linewidth=1)
 t3 = time.time()
 print("Plotted values along Re[s] = %1.1f in %1.2f seconds" % (real_offset, t3 - t2))
+show()
+
+#
+#  Now generate histograms
+#
+list_minima = ((y[1:-1] < y[:-2]) & (y[1:-1] <= y[2:])).nonzero()[0]
+list_maxima = ((y[1:-1] > y[:-2]) & (y[1:-1] >= y[2:])).nonzero()[0]
+
+values_min = y[list_minima[1:] + 1]  # Exclude first minima, as it is the only one that is above zero
+values_max = y[list_maxima + 1]
+
+hist_min = np.histogram(values_min, bins = 500)
+hist_max = np.histogram(values_max, bins = 500)
+
+plt.figure()
+plt.plot(hist_min[1][1:], hist_min[0])
+plt.plot(hist_max[1][1:], hist_max[0])
+plt.title("Riemann minima and maxima")
+
 show()
 
 if __name__ == "__main__":
