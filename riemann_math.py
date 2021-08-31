@@ -16,8 +16,9 @@ quit_computation_flag = False
 USE_CACHED_FUNC = True
 
 RIEMANN_ITER_LIMIT = 40  # Default. Can be overridden
-NK1_array = []  # 2d array of values (n_choose_k) / 2^(n+1)
 NK2_array = []  # 1d array of partial sums of NK1_array
+D_array = []    # 1d array of coefficients for Borwein method
+B_array = []    # 1d array of coefficients for Borwein method
 
 # Counts how many rows of riemann() have been computed so far.
 # Used to determine when to update progress bar, and also tracks which precomputed denominator coefficients to use.
@@ -34,7 +35,7 @@ entry_count = 0
 # Precompute table of coefficients for lookup using Euler's transformation.
 # This reduces Riemann computation time from O(n^2) to O(n) where n is number of terms
 def precompute_coeffs():
-    global NK2_array, NK1_array
+    global NK2_array
 
     if len(NK2_array) == RIEMANN_ITER_LIMIT:
         # No need to recalculate
@@ -79,9 +80,61 @@ def precompute_coeffs():
     print("Precomputed eta coefficients for %d iterations in %1.4f seconds " % (RIEMANN_ITER_LIMIT, delay))
 
 
+# Precompute table of coefficients for lookup using Euler's transformation.
+# This reduces Riemann computation time from O(n^2) to O(n) where n is number of terms
+def precompute_borwein():
+    global B_array, D_array
+
+    if len(B_array) == RIEMANN_ITER_LIMIT:
+        # No need to recalculate
+        return
+
+    t1 = time.time()
+
+    B_array = np.zeros(RIEMANN_ITER_LIMIT)
+    D_array = np.zeros(RIEMANN_ITER_LIMIT + 1)
+    #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
+
+    # Precompute N_choose_k / 2^(N+1) coefficients.
+    NK_array = np.zeros(shape=(RIEMANN_ITER_LIMIT*2 + 1, RIEMANN_ITER_LIMIT*2 + 1))
+    NK_array[0, 0] = 1  # This will be (n_choose_k)
+
+    for n in range(1, RIEMANN_ITER_LIMIT*2 + 1):
+        NK_array[n, 0] = NK_array[n - 1, 0]
+        NK_array[n, 1:(n + 1)] = NK_array[n - 1, 0:n] + NK_array[n - 1, 1:(n + 1)]
+
+    # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
+    for k in range(0, RIEMANN_ITER_LIMIT + 1):
+        D_array[k] = 0
+        for l in range(0, k + 1):
+            D_array[k] += NK_array[RIEMANN_ITER_LIMIT + l, RIEMANN_ITER_LIMIT - l]/(RIEMANN_ITER_LIMIT + l) * (4 ** l)
+
+        D_array[k] *= RIEMANN_ITER_LIMIT
+
+    for k in range(0, RIEMANN_ITER_LIMIT):
+        B_array[k] = (-1 ** k) * (D_array[k]/D_array[RIEMANN_ITER_LIMIT] - 1)
+
+    delay = time.time() - t1
+    print("Precomputed Borwein coefficients for %d iterations in %1.4f seconds " % (RIEMANN_ITER_LIMIT, delay))
+
+
 def eta_zeta_scale(v):
     # Scale factor converts Dirichlet eta function to Riemann zeta function
     return 1 / (1 - 2 ** (1 - v))
+
+
+def riemann_borwein(s):
+
+    if len(B_array) != RIEMANN_ITER_LIMIT:
+        precompute_borwein()
+
+    cum_sum = 0
+    s = complex(s)  # Because np.power will reject negative integer power (but float or complex is OK)
+    for k in range(0, RIEMANN_ITER_LIMIT):
+        cum_sum += B_array[k] * np.power(k + 1, -s)
+
+    scale1 = 1 / (1 - 2 ** (1 - s))
+    return cum_sum * scale1
 
 
 #
@@ -215,7 +268,7 @@ def riemann(s, get_array_size=False,
 
     if return_log:
         # Have single value
-        s = float(s)  # np.power can't handle negative integer exponents, so make sure it is float
+        s = complex(s)  # np.power can't handle negative integer exponents, so make sure it is complex and float
         for k in range(0, RIEMANN_ITER_LIMIT):
             cum_sum += NK2_array[k] * np.power(k + 1, -s)
 
