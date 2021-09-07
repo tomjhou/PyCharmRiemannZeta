@@ -30,7 +30,7 @@ row_count = 0
 array_zero_split = 0
 elapsed_time = 0
 entry_count = 0
-
+use_complex256 = False  # This supports higher precision calculations, but only seems to work on MacOS or Linux
 
 # Precompute table of coefficients for lookup using Euler's transformation.
 # This reduces Riemann computation time from O(n^2) to O(n) where n is number of terms
@@ -45,11 +45,16 @@ def precompute_coeffs():
 
     t1 = time.time()
 
-    NK2_array = np.zeros(RIEMANN_ITER_LIMIT)
+    if use_complex256:
+        val_type = np.complex256
+    else:
+        val_type = np.complex
+
+    NK2_array = np.zeros(RIEMANN_ITER_LIMIT, dtype=val_type)
     #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
-    NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT))
+    NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT), dtype=val_type)
     NK1_array[0, 0] = 0.5  # This will be (n_choose_k) / 2^(n+1)
 
     if VECTORIZED:
@@ -107,7 +112,7 @@ def precompute_borwein():
     for k in range(0, RIEMANN_ITER_LIMIT + 1):
         D_array[k] = 0
         for l in range(0, k + 1):
-            D_array[k] += NK_array[RIEMANN_ITER_LIMIT + l, RIEMANN_ITER_LIMIT - l]/(RIEMANN_ITER_LIMIT + l) * (4 ** l)
+            D_array[k] += NK_array[RIEMANN_ITER_LIMIT + l, RIEMANN_ITER_LIMIT - l]/(RIEMANN_ITER_LIMIT + l) * (4.0 ** l)
 
         D_array[k] *= RIEMANN_ITER_LIMIT
 
@@ -641,54 +646,8 @@ def riemann_row_non_negative(s,
             return cum_sum / (1 - np.power(2, 1 - s))
 
 
-# This is no longer used.
 #
-# Functionality is absorbed into riemann()
-#
-# Return log of riemann(s). Input must be 1d array or single value, with Re[s] >= 0 for all s
-# Uses vectorized operations, and for 2d arrays also uses cached denominators
-def log_riemann_defunct(s, do_eta=False, is_vertical=False):
-    global row_count, elapsed_time
-
-    if type(s) == np.ndarray:
-        if s.ndim == 2:
-            t1 = time.time()
-            precompute_denom(s)
-            delay = time.time() - t1
-            print("Precomputed powers in " + "{:1.4f}".format(delay) + " seconds")
-            row_count = 0
-            t1 = time.time()
-
-            row_count = 0
-            out = [0 if quit_computation_flag else riemann_row(x, do_eta=False, return_log=True) for x in s]
-
-            elapsed_time = time.time() - t1
-            return np.stack(out)
-
-    # Have 1D array or single value
-    if np.size(s) > 1:
-        # Remove values with Re[s] < 0 for vector
-        s[np.real(s) < 0] = 0
-        cum_sum = riemann_row_non_negative(s, 0, do_eta=False, USE_CACHED_FUNC=False, is_vertical=is_vertical)
-        return np.log(cum_sum)
-    else:
-        # Have single value
-        s = float(s)  # np.power can't handle negative integer exponents, so make sure it is float
-        cum_sum = 0 + 0j
-        for k in range(0, RIEMANN_ITER_LIMIT):
-            cum_sum += NK2_array[k] * np.power(k + 1, -s)
-
-        if do_eta:
-            return np.log(cum_sum)
-        else:
-            # Scale factor converts Dirichlet eta function to Riemann zeta function
-            return np.log(cum_sum) - np.log(1 - np.power(2, 1 - s))
-
-
-#
-# When multiplied by gamma(s/2) * pi ^(-s/2), the result has 180-deg rotational symmetry around s = 0.5 + 0j
-#
-# When multiplied by an additional (1/2)s(s-1), we get the riemann xi function
+# Calculate Riemann Xi function, which is Riemann(s) * gamma(s/2) * pi ^(-s/2) * (1/2)s(s-1)
 #
 def riemann_symmetric(s, return_log=False, is_vertical=False):
     if not return_log:
@@ -701,7 +660,7 @@ def riemann_symmetric(s, return_log=False, is_vertical=False):
             r = r - np.real(r) * 0.99
             return np.exp(r)
 
-        r = riemann(s)
+        r = riemann(s, is_vertical=is_vertical)
         if quit_computation_flag:
             # If we were interrupted, we will have a "ragged" list, in which some elements are a single "0",
             # while others are a full length vector. Don't try to multiply by anything, as array sizes won't match.
@@ -717,6 +676,25 @@ def riemann_symmetric(s, return_log=False, is_vertical=False):
     return np.log(0.5) + np.log(s) + np.log(s - 1) \
            + riemann(s, return_log=True, is_vertical=is_vertical) \
            + loggamma(s / 2) - s * np.log(np.pi) / 2
+
+
+#
+# Calculate a modified Riemann function that is always real on the critical line
+#
+def riemann_real(s, is_vertical=False):
+    r = riemann(s, is_vertical=is_vertical)
+    if quit_computation_flag:
+        # If we were interrupted, we will have a "ragged" list, in which some elements are a single "0",
+        # while others are a full length vector. Don't try to multiply by anything, as array sizes won't match.
+        return r
+
+    # Use gamma function to "unwind" Riemann zeta phase
+    gp = loggamma(s / 2)
+    # Force gamma magnitude to be one, since it becomes extremely small for large Imag(s)
+    gp = gp - np.real(gp)
+
+    # Unwind phase using gamma phase and pi ^ (-s/2)
+    return r * (np.pi ** (-s / 2)) * np.exp(gp)
 
 
 # Calculate gamma(s) while also updating progress bar

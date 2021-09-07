@@ -1,6 +1,8 @@
 
 from functools import partial
 import matplotlib as mpl
+import plot_critical_line_values as pclv
+
 mpl.use('TKAgg')
 
 from heatmap_gui import *
@@ -40,8 +42,7 @@ def do_heatmap(root):
 
 
 def do_critical_line():
-    import plot_critical_line_values
-
+    pclv.show_critial_line()
 
 def do_exit(root):
     global quit_flag
