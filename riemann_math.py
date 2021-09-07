@@ -91,12 +91,12 @@ def precompute_borwein():
 
     t1 = time.time()
 
-    B_array = np.zeros(RIEMANN_ITER_LIMIT)
-    D_array = np.zeros(RIEMANN_ITER_LIMIT + 1)
+    B_array = np.zeros(RIEMANN_ITER_LIMIT, dtype=np.clongdouble)
+    D_array = np.zeros(RIEMANN_ITER_LIMIT + 1, dtype=np.clongdouble)
     #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
-    NK_array = np.zeros(shape=(RIEMANN_ITER_LIMIT*2 + 1, RIEMANN_ITER_LIMIT*2 + 1))
+    NK_array = np.zeros(shape=(RIEMANN_ITER_LIMIT*2 + 1, RIEMANN_ITER_LIMIT*2 + 1), dtype=np.clongdouble)
     NK_array[0, 0] = 1  # This will be (n_choose_k)
 
     for n in range(1, RIEMANN_ITER_LIMIT*2 + 1):
@@ -128,7 +128,7 @@ def riemann_borwein(s):
     if len(B_array) != RIEMANN_ITER_LIMIT:
         precompute_borwein()
 
-    cum_sum = 0
+    cum_sum = np.clongdouble(0)
     s = complex(s)  # Because np.power will reject negative integer power (but float or complex is OK)
     for k in range(0, RIEMANN_ITER_LIMIT):
         cum_sum += B_array[k] * np.power(k + 1, -s)
