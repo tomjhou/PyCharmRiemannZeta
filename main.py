@@ -1,10 +1,11 @@
 
 from functools import partial
 import matplotlib as mpl
-import plot_critical_line_values as pclv
 
 mpl.use('TKAgg')
 
+
+import plot_critical_line_values as pclv
 from heatmap_gui import *
 
 quit_flag = False
