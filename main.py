@@ -41,8 +41,13 @@ def do_heatmap(root):
     win_heatmap.make_heatmap_gui()
 
 
-def do_critical_line():
-    pclv.show_critial_line()
+def do_critical_line(show_graphs=True):
+    pclv.show_critial_line(show_graph1=show_graphs)
+
+
+def do_critical_line_histogram():
+    pclv.show_histograms()
+
 
 def do_exit(root):
     global quit_flag
@@ -70,6 +75,12 @@ def do_main():
                                                                  padx=10, pady=5,
                                                                  ipadx=ipad, ipady=ipad)
     ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X,
+                                                                                 padx=10, pady=5,
+                                                                                 ipadx=ipad, ipady=ipad)
+    ttk.Button(frame1, text="Critical line calculation (no graphs)", command=partial(do_critical_line, False)).pack(fill=tk.X,
+                                                                                 padx=10, pady=5,
+                                                                                 ipadx=ipad, ipady=ipad)
+    ttk.Button(frame1, text="Critical line histogram", command=do_critical_line_histogram).pack(fill=tk.X,
                                                                                  padx=10, pady=5,
                                                                                  ipadx=ipad, ipady=ipad)
     ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X,

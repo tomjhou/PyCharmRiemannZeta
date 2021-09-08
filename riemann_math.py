@@ -41,8 +41,6 @@ def precompute_coeffs():
         # No need to recalculate
         return
 
-    VECTORIZED = True
-
     t1 = time.time()
 
     if use_complex256:
@@ -105,11 +103,12 @@ def precompute_borwein():
     NK_array = np.zeros(shape=(RIEMANN_ITER_LIMIT*2 + 1, RIEMANN_ITER_LIMIT*2 + 1), dtype=np.clongdouble)
     NK_array[0, 0] = 1  # This will be (n_choose_k)
 
+    # Compute n choose k. This is faster because it uses additgion instead of multiplication/factorials
     for n in range(1, RIEMANN_ITER_LIMIT*2 + 1):
         NK_array[n, 0] = NK_array[n - 1, 0]
         NK_array[n, 1:(n + 1)] = NK_array[n - 1, 0:n] + NK_array[n - 1, 1:(n + 1)]
 
-    # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
+    # Compute borwein coefficients
     for k in range(0, RIEMANN_ITER_LIMIT + 1):
         D_array[k] = 0
         for l in range(0, k + 1):

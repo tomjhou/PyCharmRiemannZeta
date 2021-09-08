@@ -1,20 +1,25 @@
 import numpy as np
 from matplotlib import use
 import matplotlib.pyplot as plt
-from scipy.special import gamma, loggamma
-import platform
 import time
-
+import pickle
+from tkinter import filedialog
 import riemann_math as rm
 
 use("TkAgg")
 
 
-def show_critial_line():
+# When running in GUI, plots don't show up right away. Normally, you can call plt.show(),
+# but this pauses GUI, so we use plt.draw() followed by brief plt.pause() instead.
+def show():
+    plt.draw()
+    plt.pause(0.001)
+
+
+def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True):
     imag_start = 1
     imag_end = 120000
-    imag_gap = 0.01
-    show_off_critical = False
+    imag_points = (imag_end - imag_start) * 100 + 1
 
     real_offset = 5
 
@@ -26,36 +31,34 @@ def show_critial_line():
     rm.precompute_coeffs()
     print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
-    # Input vector along critical line Re[s] = 0.5
-    imag_part = np.arange(imag_start, imag_end, imag_gap) * 1j
-    s = imag_part + 0.5
+    # Documentation says to use linspace for floats, arange for integers. Ok, whatever.
+    # Notably, linspace includes endpoint, arange does not.
+    imag_part = np.linspace(imag_start, imag_end, imag_points)
+
+    # Create input vector along critical line Re[s] = 0.5
+    s = imag_part * 1j + 0.5
     ax = np.imag(s)  # this is what will be used for x-axis of plot
 
     # Make figure now so user doesn't have to stare at blank screen too much longer
-    fig1 = plt.figure()
-    # Reduce margins
-    plt.tight_layout()
-    # Make even smaller margins
-    plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
+    if show_graph1:
+        fig1 = plt.figure()
+        # Reduce margins
+        plt.tight_layout()
+        # Make even smaller margins
+        plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
 
-    # Default window is small and short. Make it wide and short
-    plotsize = plt.gcf().get_size_inches()
-    fig1.set_size_inches(plotsize[0] * 4, plotsize[1])
+        # Default window is small and short. Make it wide and short
+        plotsize = plt.gcf().get_size_inches()
+        fig1.set_size_inches(plotsize[0] * 4, plotsize[1])
 
-    fig1.canvas.manager.window.wm_geometry("+25+50")
+        fig1.canvas.manager.window.wm_geometry("+25+50")
 
-    # plt.subplot(2,1,1)
-    plt.axhline(color='k')
-    plt.title('Normalized to gamma magnitude')
+        # plt.subplot(2,1,1)
+        plt.axhline(color='k')
+        plt.title('Normalized to gamma magnitude')
 
-    # When running in GUI, plots don't show up right away. Normally, you can call plt.show(),
-    # but this pauses GUI, so we use plt.draw() followed by brief plt.pause() instead.
-    def show():
-        plt.draw()
-        plt.pause(0.001)
-
-    # This will make a blank window show up so user knows something is about to happen
-    show()
+        # This will make a blank window show up so user knows something is about to happen
+        show()
 
     #
     # Calculate riemann values at line Re[s] = 0.5
@@ -84,19 +87,20 @@ def show_critial_line():
     t2 = time.time()
     print("Calculated values along critical line Re[s]=0.5 in %1.2f seconds" % (t2 - t1))
 
-    plt.plot(ax, y, linewidth=1)
-    show()
-
-    # Input vector along line Re[s] = 5
-    if show_off_critical:
-        s2 = imag_part + real_offset
-
-        # Calculate at line Re[s] = offset
-        y2 = np.real((np.pi ** (real_offset / 2)) * rm.riemann_real(s2, is_vertical=True))
-        plt.plot(ax, -y2, linewidth=1)
-        t3 = time.time()
-        print("Plotted values along Re[s] = %1.1f in %1.2f seconds" % (real_offset, t3 - t2))
+    if show_graph1:
+        plt.plot(ax, y, linewidth=1)
         show()
+
+        # Input vector along line Re[s] = 5
+        if show_off_critical:
+            s2 = imag_part * 1j + real_offset
+
+            # Calculate at line Re[s] = offset
+            y2 = np.real((np.pi ** (real_offset / 2)) * rm.riemann_real(s2, is_vertical=True))
+            plt.plot(ax, -y2, linewidth=1)
+            t3 = time.time()
+            print("Plotted values along Re[s] = %1.1f in %1.2f seconds" % (real_offset, t3 - t2))
+            show()
 
     #
     #  Now generate histograms
@@ -104,32 +108,74 @@ def show_critial_line():
     list_minima = ((y[1:-1] < y[:-2]) & (y[1:-1] <= y[2:])).nonzero()[0]
     list_maxima = ((y[1:-1] > y[:-2]) & (y[1:-1] >= y[2:])).nonzero()[0]
 
-    def plot_hist_pair(mins, maxes, numbins=120):
-        values_min = y[mins[1:] + 1]  # Exclude first minimum. (Not necessary)
-        values_max = y[maxes[1:] + 1]  # Exclude first maximum, as it is the only one below zero
+    print("Found " + str(len(list_minima)) + " minima and " + str(len(list_maxima)) + " maxima")
+
+    if save_full:
+        #  Save results including raw values y. These files can be very large
+        filename = 'riemann_extrema_' + str(imag_end) + '_full.pkl'
+        with open(filename, 'wb') as f:  # Python 3: open(..., 'wb')
+            pickle.dump([imag_start, imag_end, y, list_minima, list_maxima], f)
+
+    #  Save max/min values only, excluding raw values y (much smaller file)
+    filename = 'riemann_extrema_' + str(imag_end) + '.pkl'
+    values_min = y[list_minima + 1]
+    values_max = y[list_maxima + 1]
+
+    with open(filename, 'wb') as f:  # Python 3: open(..., 'wb')
+        pickle.dump([imag_start, imag_end, values_min, values_max], f)
+
+    show_histograms(imag_start, imag_end, values_min, values_max)
+
+
+def show_histograms(imag_start=1, imag_end=np.nan, values_min=[], values_max=[], load_full=False):
+
+    if values_min == []:
+        #            file_path = 'riemann_extrema_120000_full.pkl'
+        file_path = filedialog.askopenfilename()
+        with open(file_path, 'rb') as f:
+            if load_full:
+                # Load raw values into vector y. These files might be very large
+                imag_start, imag_end, y, list_minima, list_maxima = pickle.load(f)
+                values_min = y[list_minima + 1]
+                values_max = y[list_maxima + 1]
+            else:
+                # Don't load raw values. These files are much smaller
+                imag_start, imag_end, values_min, values_max = pickle.load(f)
+
+    def plot_hist_pair(mins, maxes, numbins=360, log=False):
+        values_min = mins[1:]  # Exclude first minimum. (Not necessary)
+        values_max = maxes[1:]  # Exclude first maximum, as it is the only one below zero
 
         hist_min = np.histogram(values_min, bins=numbins, density=True)
         hist_max = np.histogram(values_max, bins=numbins, density=True)
 
-        plt.plot(hist_min[1][1:], hist_min[0])
-        plt.plot(hist_max[1][1:], hist_max[0])
+        if log:
+            plt.plot(hist_min[1][1:], np.log10(hist_min[0]))
+            plt.plot(hist_max[1][1:], np.log10(hist_max[0]))
+        else:
+            plt.plot(hist_min[1][1:], hist_min[0])
+            plt.plot(hist_max[1][1:], hist_max[0])
 
     fig2 = plt.figure()
-
     fig2.canvas.manager.window.wm_geometry("+25+625")
 
-    print("Found " + str(len(list_minima)) + " minima and " + str(len(list_maxima)) + " maxima")
+    print("Plotting " + str(len(values_min)) + " minima and " + str(len(values_max)) + " maxima")
 
-    # Plot histogram for first 500 minima/maxima
-#    plot_hist_pair(list_minima[0:500], list_maxima[0:500], numbins=40)
     # Plot histogram for first 10k minima/maxima
-    plot_hist_pair(list_minima[0:10000], list_maxima[0:10000], numbins=120)
+    plot_hist_pair(values_min[0:10000], values_max[0:10000], numbins=120)
     # Plot all min/max
-    plot_hist_pair(list_minima, list_maxima)
+    plot_hist_pair(values_min, values_max, numbins=240)
+    plt.title("Distribution of Riemann minima and maxima up to Imag(s) = " + str(imag_end))
 
-    plt.title("Riemann minima and maxima " + str(imag_end))
+    # Plot logs
+    fig3 = plt.figure()
+    fig3.canvas.manager.window.wm_geometry("+625+625")
+    plot_hist_pair(values_min[0:10000], values_max[0:10000], numbins=120, log=True)
+    plot_hist_pair(values_min, values_max, numbins=240, log=True)
 
+    plt.title("Log distribution of Riemann minima and maxima up to Imag(s) = " + str(imag_end))
     show()
+
 
 if __name__ == "__main__":
     print("Done importing")
