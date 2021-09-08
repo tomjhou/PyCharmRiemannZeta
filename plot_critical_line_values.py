@@ -9,9 +9,10 @@ import riemann_math as rm
 
 use("TkAgg")
 
+
 def show_critial_line():
     imag_start = 1
-    imag_end = 60000
+    imag_end = 120000
     imag_gap = 0.01
     show_off_critical = False
 
@@ -52,7 +53,6 @@ def show_critial_line():
     def show():
         plt.draw()
         plt.pause(0.001)
-
 
     # This will make a blank window show up so user knows something is about to happen
     show()

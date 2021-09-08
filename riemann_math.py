@@ -53,33 +53,34 @@ def precompute_coeffs():
     NK2_array = np.zeros(RIEMANN_ITER_LIMIT, dtype=val_type)
     #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
 
-    # Precompute N_choose_k / 2^(N+1) coefficients.
-    NK1_array = np.zeros(shape=(RIEMANN_ITER_LIMIT, RIEMANN_ITER_LIMIT), dtype=val_type)
-    NK1_array[0, 0] = 0.5  # This will be (n_choose_k) / 2^(n+1)
+    # Precompute a "cumulative", "normalized" Pascal's triangle,
+    # in which each row is half the sum of the two values above it,
+    # and the first item in each row is 1.
+    #
+    # The values in each row are the cumulative sum of values in the traditional Pascal's triangle,
+    # normalized to 1/2^n.
+    #
+    # The Euler coefficients will be the values in the last row, excluding the first item
+    # 1
+    # 1   1/2
+    # 1   3/4   1/4
+    # 1   7/8   4/8   1/8
+    # 1   15/16 11/16 5/16   1/16
+    # 1   31/32 26/32 16/32  6/32  1/32
+    # 1   63/64 57/64 42/64 22/64  7/64  1/64
+    # ...
+    NK1_array = np.zeros(RIEMANN_ITER_LIMIT + 1, dtype=val_type)
+    NK1_array_tmp = np.zeros(RIEMANN_ITER_LIMIT + 1, dtype=val_type)
+    NK1_array[0] = 1  #
 
-    if VECTORIZED:
+    for n in range(1, RIEMANN_ITER_LIMIT + 1):
+        NK1_array_tmp[0] = 1
+        NK1_array_tmp[1:(n + 1)] = (NK1_array[0:n] + NK1_array[1:(n + 1)]) / 2
+        NK1_array = NK1_array_tmp
 
-        for n in range(1, RIEMANN_ITER_LIMIT):
-            NK1_array[n, 0] = NK1_array[n - 1, 0] / 2
-            NK1_array[n, 1:(n + 1)] = (NK1_array[n - 1, 0:n] + NK1_array[n - 1, 1:(n + 1)]) / 2
-
-        # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
-        for k in range(0, RIEMANN_ITER_LIMIT):
-            NK2_array[k] = ((-1) ** k) * np.sum(NK1_array[k:RIEMANN_ITER_LIMIT, k])
-
-    else:
-        for n in range(1, RIEMANN_ITER_LIMIT):
-            NK1_array[n, 0] = NK1_array[n - 1, 0] / 2
-            for k in range(1, n + 1):
-                # Pascal's triangle, but with an additional divide by 2 at each row.
-                NK1_array[n, k] = (NK1_array[n - 1, k - 1] + NK1_array[n - 1, k]) / 2
-
-        # Precompute sum of above coefficients for each value of k. These will be used in Euler transform
-        for k in range(0, RIEMANN_ITER_LIMIT):
-            tmp_sum = 0
-            for n in range(k, RIEMANN_ITER_LIMIT):
-                tmp_sum += NK1_array[n, k]  # comb(n,k) / (2 ** (n+1))
-            NK2_array[k] = ((-1) ** k) * tmp_sum
+    # Exclude first value in the above cumulative sum, and alternate sign
+    for k in range(0, RIEMANN_ITER_LIMIT):
+        NK2_array[k] = ((-1) ** k) * NK1_array[k + 1]
 
     delay = time.time() - t1
     print("Precomputed eta coefficients for %d iterations in %1.4f seconds " % (RIEMANN_ITER_LIMIT, delay))
@@ -504,8 +505,8 @@ def precompute_denom(mesh):
 
 
 USE_MATRIX_MULT = True
-bases = []
-powers = []
+bases = []    # List of numbers k=1, 2, 3, ...
+powers = []   # List of values k^s_imag, where s_imag = Imag(s)
 imag_part = []
 MAX_MEMORY = 200000000  # max # of complex elements in array
 
@@ -547,7 +548,7 @@ def make_powers2(limit):
 
     # Now calculate second half
     imag_diff = imag_part[half_s] - imag_part[0]  # Imaginary diff
-    ratios = np.power(bases, -1j * imag_diff)
+    ratio = np.power(bases, -1j * imag_diff)
 
     if is_odd:
         limit1 = half_s - 1
@@ -555,7 +556,7 @@ def make_powers2(limit):
         limit1 = half_s
 
     # Second half of range is obtained by scalar multiplication from the first half
-    powers[:, half_s:limit] = np.multiply(ratios, powers[:, 0:limit1])
+    powers[:, half_s:limit] = np.multiply(ratio, powers[:, 0:limit1])
 
 
 #
@@ -578,7 +579,20 @@ def riemann_row_non_negative(s,
     if USE_CACHED_FUNC:
 
         if USE_MATRIX_MULT:
-            # Dot product is much faster than loop
+            # Calculate k ^ (-s) for k = 1, 2, 3, ... ITER
+            #
+            # We can pre-computge the above for the real and imaginary parts of s, then multiply them together.
+            #
+            # NK2_array has shape (ITER, ), and holds the Euler weights
+            #
+            # cached_powers_phase is N x ITER matrix, where N is # of plot mesh rows
+            # cached_powers_phase[row_num] has shape (ITER, ), with elements representing k (= 1, 2, ... ITER)
+            # raised to power of the imaginary component of current row
+            #
+            # np.multiply() performs element by element multiplication with phase. Output is then multiplied
+            # (again element by element) with magnitude, then summed (hence we use dot product instead of np.multiply)
+            # to give final output
+            #
             cum_sum = np.dot(np.multiply(NK2_array, cached_powers_phase[row_num]),
                              cached_powers_mag)
         else:
@@ -595,6 +609,9 @@ def riemann_row_non_negative(s,
 
         if is_vertical:  #
             # Use pre-computed k-power table, allowing 2D vectorization, and further speedup
+
+            # In vertical mode, all values of s have the same real part. So calculate for the first
+            # one and assume it is same for all other points
             real_part = np.real(s[0])
             bases_real = np.power(bases, -real_part)
             NK2_real_power = np.multiply(NK2_array, bases_real.flatten())
