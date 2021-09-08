@@ -22,17 +22,17 @@ def do_vectors():
 
 def do_heatmap(root):
 
+    # Create heatmap menu window
     win = tk.Toplevel(root)
-    # Place just below earlier window
 
     if not is_android:
-        # Move to avoid overlapping first window
+        # Move to avoid overlapping the base menu window
 
         # winfo_rooty() gets y-coordinate of window contents BELOW the titlebar, whereas winfo_y(), which gets
         # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
-        # Noet that we also add
-
 #        new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+
+        # New menu is slightly below and right of firstg one
         new_geom = "+%d+%d" % (25, 25)
         print("Creating heatmap control window at location " + new_geom)
         win.geometry(new_geom)

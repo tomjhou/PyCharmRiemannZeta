@@ -1,16 +1,17 @@
 import numpy as np
-# import matplotlib
+from matplotlib import use
 import matplotlib.pyplot as plt
 from scipy.special import gamma, loggamma
 import platform
 import time
 
 import riemann_math as rm
-# matplotlib.use("TkAgg")
+
+use("TkAgg")
 
 def show_critial_line():
     imag_start = 1
-    imag_end = 30000
+    imag_end = 60000
     imag_gap = 0.01
     show_off_critical = False
 
@@ -30,11 +31,17 @@ def show_critial_line():
     ax = np.imag(s)  # this is what will be used for x-axis of plot
 
     # Make figure now so user doesn't have to stare at blank screen too much longer
-    plt.figure()
+    fig1 = plt.figure()
     # Reduce margins
     plt.tight_layout()
     # Make even smaller margins
     plt.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.05)
+
+    # Default window is small and short. Make it wide and short
+    plotsize = plt.gcf().get_size_inches()
+    fig1.set_size_inches(plotsize[0] * 4, plotsize[1])
+
+    fig1.canvas.manager.window.wm_geometry("+25+50")
 
     # plt.subplot(2,1,1)
     plt.axhline(color='k')
@@ -97,7 +104,7 @@ def show_critial_line():
     list_minima = ((y[1:-1] < y[:-2]) & (y[1:-1] <= y[2:])).nonzero()[0]
     list_maxima = ((y[1:-1] > y[:-2]) & (y[1:-1] >= y[2:])).nonzero()[0]
 
-    def plot_hist_pair(mins, maxes, numbins=200):
+    def plot_hist_pair(mins, maxes, numbins=120):
         values_min = y[mins[1:] + 1]  # Exclude first minimum. (Not necessary)
         values_max = y[maxes[1:] + 1]  # Exclude first maximum, as it is the only one below zero
 
@@ -107,14 +114,19 @@ def show_critial_line():
         plt.plot(hist_min[1][1:], hist_min[0])
         plt.plot(hist_max[1][1:], hist_max[0])
 
-    plt.figure()
+    fig2 = plt.figure()
+
+    fig2.canvas.manager.window.wm_geometry("+25+625")
 
     print("Found " + str(len(list_minima)) + " minima and " + str(len(list_maxima)) + " maxima")
+
     # Plot histogram for first 500 minima/maxima
-    plot_hist_pair(list_minima[0:500], list_maxima[0:500], numbins=40)
+#    plot_hist_pair(list_minima[0:500], list_maxima[0:500], numbins=40)
     # Plot histogram for first 10k minima/maxima
     plot_hist_pair(list_minima[0:10000], list_maxima[0:10000], numbins=120)
+    # Plot all min/max
     plot_hist_pair(list_minima, list_maxima)
+
     plt.title("Riemann minima and maxima " + str(imag_end))
 
     show()
