@@ -6,7 +6,7 @@ mpl.use('TKAgg')
 
 
 import plot_critical_line_values as pclv
-from heatmap_gui import *
+from riemann_heatmap_gui import *
 
 quit_flag = False
 
