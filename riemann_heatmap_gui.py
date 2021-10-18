@@ -549,3 +549,5 @@ def do_main():
 # root.mainloop()
 if __name__ == "__main__":
     do_main()
+else:
+    print(__name__)
