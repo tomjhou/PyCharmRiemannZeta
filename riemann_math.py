@@ -46,7 +46,7 @@ def precompute_coeffs():
     if use_complex256:
         val_type = np.complex256
     else:
-        val_type = np.complex
+        val_type = complex
 
     NK2_array = np.zeros(RIEMANN_ITER_LIMIT, dtype=val_type)
     #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
@@ -483,14 +483,14 @@ def precompute_denom(mesh):
 
     # Delete any previous coefficients
     cached_powers_phase.clear()
-    cached_powers_mag = np.empty((RIEMANN_ITER_LIMIT, len(row1)), dtype=np.complex)
+    cached_powers_mag = np.empty((RIEMANN_ITER_LIMIT, len(row1)), dtype=complex)
 
     for k in range(0, RIEMANN_ITER_LIMIT):
         # Denominator magnitudes as a function of x. This array is sorted by k, then column
         cached_powers_mag[k] = np.concatenate((np.power(k + 1, -np.real(1 - s0)),
                                                np.power(k + 1, -np.real(s1))))
 
-    col1 = np.empty(len(mesh), dtype=np.complex)
+    col1 = np.empty(len(mesh), dtype=complex)
     for row in range(0, len(mesh)):
         # Denominator phase is a function of y (row). This array is sorted by row, then k
         col1[row] = mesh[row][0]
