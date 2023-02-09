@@ -28,9 +28,8 @@ def show_critical_line(show_graph1=True, show_off_critical=False, save_full=True
     if rm.RIEMANN_ITER_LIMIT < iter_limit:
         rm.RIEMANN_ITER_LIMIT = iter_limit  # int(height * 3)
 
-    print("Precomputing coefficients for eta calculations. Please wait ...")
+    print(f"Precomputing coefficients, iteration limit = {rm.RIEMANN_ITER_LIMIT}. Please wait...")
     rm.precompute_coeffs()
-    print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
     # Documentation says to use linspace for floats, arange for integers. Ok, whatever.
     # Notably, linspace includes endpoint, arange does not.
@@ -106,10 +105,11 @@ def show_critical_line(show_graph1=True, show_off_critical=False, save_full=True
 
     #
     #  nonzero() returns indices of local min and max.
-    #  Pycharm complains about it, even though usage is correct.
     #
-    list_minima = ((y[1:-1] < y[:-2]) & (y[1:-1] <= y[2:])).nonzero()[0]
-    list_maxima = ((y[1:-1] > y[:-2]) & (y[1:-1] >= y[2:])).nonzero()[0]
+    list_minima: np.ndarray = ((y[1:-1] < y[:-2]) & (y[1:-1] <= y[2:]))
+    list_minima = list_minima.nonzero()[0]
+    list_maxima: np.ndarray = ((y[1:-1] > y[:-2]) & (y[1:-1] >= y[2:]))
+    list_maxima = list_maxima.nonzero()[0]
 
     print("Found " + str(len(list_minima)) + " minima and " + str(len(list_maxima)) + " maxima")
 

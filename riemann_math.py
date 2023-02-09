@@ -7,7 +7,7 @@ import time
 outArray = []
 
 # This should be set by caller, to handle computational progress
-computation_progress_callback: typing.Callable = None
+computation_progress_callback: typing.Optional[typing.Callable] = None
 
 # This can be set by caller, to halt ongoing computation (only works with Riemann)
 quit_computation_flag = False
@@ -17,8 +17,8 @@ USE_CACHED_FUNC = True
 
 RIEMANN_ITER_LIMIT = 40  # Default. Can be overridden
 NK2_array = []  # 1d array of partial sums of NK1_array
-D_array = []    # 1d array of coefficients for Borwein method
-B_array = []    # 1d array of coefficients for Borwein method
+D_array = []  # 1d array of coefficients for Borwein method
+B_array = []  # 1d array of coefficients for Borwein method
 
 # Counts how many rows of riemann() have been computed so far.
 # Used to determine when to update progress bar, and also tracks which precomputed denominator coefficients to use.
@@ -31,6 +31,7 @@ array_zero_split = 0
 elapsed_time = 0
 entry_count = 0
 use_complex256 = False  # This supports higher precision calculations, but only seems to work on MacOS or Linux
+
 
 # Precompute table of coefficients for lookup using Euler's transformation.
 # This reduces Riemann computation time from O(n^2) to O(n) where n is number of terms
@@ -100,24 +101,25 @@ def precompute_borwein():
     #    print("Precomputing " + str(RIEMANN_ITER_LIMIT) + " coefficients for Riemann/Dirichlet sum", end="")
 
     # Precompute N_choose_k / 2^(N+1) coefficients.
-    NK_array = np.zeros(shape=(RIEMANN_ITER_LIMIT*2 + 1, RIEMANN_ITER_LIMIT*2 + 1), dtype=np.clongdouble)
+    NK_array = np.zeros(shape=(RIEMANN_ITER_LIMIT * 2 + 1, RIEMANN_ITER_LIMIT * 2 + 1), dtype=np.clongdouble)
     NK_array[0, 0] = 1  # This will be (n_choose_k)
 
-    # Compute n choose k. This is faster because it uses additgion instead of multiplication/factorials
-    for n in range(1, RIEMANN_ITER_LIMIT*2 + 1):
+    # Compute n choose k. This is faster because it uses addition instead of multiplication/factorials
+    for n in range(1, RIEMANN_ITER_LIMIT * 2 + 1):
         NK_array[n, 0] = NK_array[n - 1, 0]
         NK_array[n, 1:(n + 1)] = NK_array[n - 1, 0:n] + NK_array[n - 1, 1:(n + 1)]
 
     # Compute borwein coefficients
     for k in range(0, RIEMANN_ITER_LIMIT + 1):
         D_array[k] = 0
-        for l in range(0, k + 1):
-            D_array[k] += NK_array[RIEMANN_ITER_LIMIT + l, RIEMANN_ITER_LIMIT - l]/(RIEMANN_ITER_LIMIT + l) * (4.0 ** l)
+        for l1 in range(0, k + 1):
+            D_array[k] += NK_array[RIEMANN_ITER_LIMIT + l1,
+                                   RIEMANN_ITER_LIMIT - l1] / (RIEMANN_ITER_LIMIT + l1) * (4.0 ** l1)
 
         D_array[k] *= RIEMANN_ITER_LIMIT
 
     for k in range(0, RIEMANN_ITER_LIMIT):
-        B_array[k] = (-1 ** k) * (D_array[k]/D_array[RIEMANN_ITER_LIMIT] - 1)
+        B_array[k] = (-1 ** k) * (D_array[k] / D_array[RIEMANN_ITER_LIMIT] - 1)
 
     delay = time.time() - t1
     print("Precomputed Borwein coefficients for %d iterations in %1.4f seconds " % (RIEMANN_ITER_LIMIT, delay))
@@ -129,7 +131,6 @@ def eta_zeta_scale(v):
 
 
 def riemann_borwein(s):
-
     if len(B_array) != RIEMANN_ITER_LIMIT:
         precompute_borwein()
 
@@ -231,7 +232,7 @@ def riemann(s, get_array_size=False,
         out_vals = riemann_row_non_negative(s, row_num=-1,
                                             do_eta=do_eta,
                                             is_vertical=is_vertical,
-                                            USE_CACHED_FUNC=False)
+                                            USE_CACHED=False)
 
         if return_log:
             return np.log(out_vals)
@@ -255,19 +256,19 @@ def riemann(s, get_array_size=False,
         if do_eta:
             if return_log:
                 return np.log(-2 * s) + riemann(1 - s, do_eta=True, return_log=True) \
-                       + loggamma(- s) + logsin(-s * np.pi / 2) + (s - 1) * np.log(np.pi) \
-                       + np.log((1 - 2 ** (s - 1)) / (1 - 2 ** s))
+                    + loggamma(- s) + logsin(-s * np.pi / 2) + (s - 1) * np.log(np.pi) \
+                    + np.log((1 - 2 ** (s - 1)) / (1 - 2 ** s))
             else:
                 return -2 * s * riemann(1 - s, do_eta=True, return_log=False) \
-                       * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) \
-                       * (1 - 2 ** (s - 1)) / (1 - 2 ** s)
+                    * gamma(- s) * np.sin(-s * np.pi / 2) * (np.pi ** (s - 1)) \
+                    * (1 - 2 ** (s - 1)) / (1 - 2 ** s)
         else:
             if return_log:
                 return riemann(1 - s, do_eta=False, return_log=True) \
-                       + loggamma(1 - s) + logsin(s * np.pi / 2) + (s - 1) * np.log(np.pi) + s * np.log(2)
+                    + loggamma(1 - s) + logsin(s * np.pi / 2) + (s - 1) * np.log(np.pi) + s * np.log(2)
             else:
                 return riemann(1 - s, do_eta=False, return_log=False) \
-                       * gamma(1 - s) * np.sin(s * np.pi / 2) * (np.pi ** (s - 1)) * (2 ** s)
+                    * gamma(1 - s) * np.sin(s * np.pi / 2) * (np.pi ** (s - 1)) * (2 ** s)
 
     cum_sum = 0 + 0j
 
@@ -398,7 +399,7 @@ def riemann_row(s, do_eta=False, USE_CACHED_DENOM=True, return_log=False):
     # Transform negative values into 1-s, and make new array
     in_vals = np.concatenate(((1 - s0), s1))
 
-    out_vals = riemann_row_non_negative(in_vals, row_count - 1, do_eta=do_eta, USE_CACHED_FUNC=USE_CACHED_DENOM)
+    out_vals = riemann_row_non_negative(in_vals, row_count - 1, do_eta=do_eta, USE_CACHED=USE_CACHED_DENOM)
 
     if array_zero_split > 0:
         out_vals[0:array_zero_split] = np.conj(out_vals[0:array_zero_split])
@@ -504,8 +505,8 @@ def precompute_denom(mesh):
 
 
 USE_MATRIX_MULT = True
-bases = []    # List of numbers k=1, 2, 3, ...
-powers = []   # List of values k^s_imag, where s_imag = Imag(s)
+bases = []  # List of numbers k=1, 2, 3, ...
+powers = []  # List of values k^s_imag, where s_imag = Imag(s)
 imag_part = []
 MAX_MEMORY = 200000000  # max # of complex elements in array
 
@@ -522,7 +523,7 @@ def make_powers(s):
     if len_s * RIEMANN_ITER_LIMIT > MAX_MEMORY:
         len_s = int(MAX_MEMORY / RIEMANN_ITER_LIMIT)
 
-    if powers == []:
+    if len(powers) == 0:
         powers = np.empty((RIEMANN_ITER_LIMIT, len_s), dtype=complex)
     elif len_s > powers.shape[1]:
         powers = np.empty((RIEMANN_ITER_LIMIT, len_s), dtype=complex)
@@ -567,7 +568,7 @@ def make_powers2(limit):
 def riemann_row_non_negative(s,
                              row_num,  # Which row of mesh grid? 0 is bottom
                              do_eta=False,  # Do Dirichlet eta instead of Riemann zeta
-                             USE_CACHED_FUNC=True,
+                             USE_CACHED=True,
                              is_vertical=False):  # True if evenly spaced along vertical line
     global quit_computation_flag
     global bases, powers
@@ -575,12 +576,12 @@ def riemann_row_non_negative(s,
     if len(s) == 0:
         return []
 
-    if USE_CACHED_FUNC:
+    if USE_CACHED:
 
         if USE_MATRIX_MULT:
             # Calculate k ^ (-s) for k = 1, 2, 3, ... ITER
             #
-            # We can pre-computge the above for the real and imaginary parts of s, then multiply them together.
+            # We can pre-compute the above for the real and imaginary parts of s, then multiply them together.
             #
             # NK2_array has shape (ITER, ), and holds the Euler weights
             #
@@ -690,8 +691,8 @@ def riemann_symmetric(s, return_log=False, is_vertical=False):
     # For any complex c = r * e^(it)
     #     log(c) = log(r) + it
     return np.log(0.5) + np.log(s) + np.log(s - 1) \
-           + riemann(s, return_log=True, is_vertical=is_vertical) \
-           + loggamma(s / 2) - s * np.log(np.pi) / 2
+        + riemann(s, return_log=True, is_vertical=is_vertical) \
+        + loggamma(s / 2) - s * np.log(np.pi) / 2
 
 
 #

@@ -1,6 +1,8 @@
 import matplotlib as mpl
 import plot_critical_line_values as pclv
 from riemann_heatmap_gui import *
+from riemann_vectors import *
+from main_perpendicular_animation import *
 
 mpl.use('TKAgg')
 
@@ -14,7 +16,9 @@ if 'ANDROID_BOOTLOGO' in environ:
 
 
 def do_vectors():
-    import riemann_vectors
+    # 2d plot in complex plane of values along critical line
+    rv = RiemannVectors()
+    rv.make_graph()
 
 
 def do_heatmap(root):
@@ -35,6 +39,11 @@ def do_heatmap(root):
 
     win_heatmap = WinHeatMap(win, is_android)
     win_heatmap.make_heatmap_gui()
+
+
+def do_perpendicular():
+    # 2d plot in complex plane of values along vertical slices parallel to critical line
+    PerpendicularAnimate(PLOT_DOMAIN).make_graph()
 
 
 def do_critical_line(show_graphs=True):
@@ -67,12 +76,14 @@ def do_main():
         ipad = 10
 
     ttk.Label(frame1, text="Choose program").pack(fill=tk.X, pady=5)
-    ttk.Button(frame1, text="Heatmaps", command=partial(do_heatmap, root)).pack(fill=tk.X,
-                                                                                padx=10, pady=5,
-                                                                                ipadx=ipad, ipady=ipad)
-    ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X,
-                                                                                 padx=10, pady=5,
-                                                                                 ipadx=ipad, ipady=ipad)
+    ttk.Button(frame1, text="Heatmaps",
+               command=partial(do_heatmap, root)).pack(fill=tk.X,
+                                                       padx=10, pady=5,
+                                                       ipadx=ipad, ipady=ipad)
+    ttk.Button(frame1, text="Critical line plot",
+               command=do_critical_line).pack(fill=tk.X,
+                                              padx=10, pady=5,
+                                              ipadx=ipad, ipady=ipad)
 
     style = ttk.Style()
     style.configure("CenterText.TButton", justify="center")
@@ -89,12 +100,21 @@ def do_main():
                style="CenterText.TButton").pack(fill=tk.X,
                                                 padx=10, pady=5,
                                                 ipadx=ipad, ipady=ipad)
-    ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X,
-                                                                        padx=10, pady=5,
-                                                                        ipadx=ipad, ipady=ipad)
-    ttk.Button(frame1, text="Exit", command=partial(do_exit, root)).pack(fill=tk.X,
-                                                                         padx=10, pady=5,
-                                                                         ipadx=ipad, ipady=ipad)
+    ttk.Button(frame1, text="2D plot along critical line",
+               command=do_vectors).pack(fill=tk.X,
+                                        padx=10, pady=5,
+                                        ipadx=ipad, ipady=ipad)
+
+    ttk.Button(frame1, text="2D plot along lines\nparallel to critical line",
+               style="CenterText.TButton",
+               command=do_perpendicular).pack(fill=tk.X,
+                                              padx=10, pady=5,
+                                              ipadx=ipad, ipady=ipad)
+
+    ttk.Button(frame1, text="Exit",
+               command=partial(do_exit, root)).pack(fill=tk.X,
+                                                    padx=10, pady=(5, 15),
+                                                    ipadx=ipad, ipady=ipad)
 
     if is_android:
         print("Android!")
