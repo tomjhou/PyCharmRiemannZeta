@@ -1,12 +1,8 @@
-
-from functools import partial
 import matplotlib as mpl
-
-mpl.use('TKAgg')
-
-
 import plot_critical_line_values as pclv
 from heatmap_gui import *
+
+mpl.use('TKAgg')
 
 quit_flag = False
 
@@ -22,7 +18,6 @@ def do_vectors():
 
 
 def do_heatmap(root):
-
     # Create heatmap menu window
     win = tk.Toplevel(root)
 
@@ -31,7 +26,7 @@ def do_heatmap(root):
 
         # winfo_rooty() gets y-coordinate of window contents BELOW the titlebar, whereas winfo_y(), which gets
         # coordinate of the top of the titlebar. So we use the first, in order to place new window entirely below old.
-#        new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
+        #        new_geom = "+%d+%d" % (PADDING_PIXELS, PADDING_PIXELS + root.winfo_rooty() + root.winfo_height())
 
         # New menu is slightly below and right of firstg one
         new_geom = "+%d+%d" % (25, 25)
@@ -43,7 +38,7 @@ def do_heatmap(root):
 
 
 def do_critical_line(show_graphs=True):
-    pclv.show_critial_line(show_graph1=show_graphs)
+    pclv.show_critical_line(show_graph1=show_graphs)
 
 
 def do_critical_line_histogram():
@@ -73,24 +68,33 @@ def do_main():
 
     ttk.Label(frame1, text="Choose program").pack(fill=tk.X, pady=5)
     ttk.Button(frame1, text="Heatmaps", command=partial(do_heatmap, root)).pack(fill=tk.X,
-                                                                 padx=10, pady=5,
-                                                                 ipadx=ipad, ipady=ipad)
+                                                                                padx=10, pady=5,
+                                                                                ipadx=ipad, ipady=ipad)
     ttk.Button(frame1, text="Critical line plot", command=do_critical_line).pack(fill=tk.X,
                                                                                  padx=10, pady=5,
                                                                                  ipadx=ipad, ipady=ipad)
-    ttk.Button(frame1, text="Critical line calculation (no graphs)", command=partial(do_critical_line, False)).pack(fill=tk.X,
-                                                                                 padx=10, pady=5,
-                                                                                 ipadx=ipad, ipady=ipad)
-    ttk.Button(frame1, text="Critical line histogram", command=do_critical_line_histogram).pack(fill=tk.X,
-                                                                                 padx=10, pady=5,
-                                                                                 ipadx=ipad, ipady=ipad)
+
+    style = ttk.Style()
+    style.configure("CenterText.TButton", justify="center")
+
+    ttk.Button(frame1, text="Critical line calculation\n(histograms only)",
+               command=partial(do_critical_line, False),
+               style="CenterText.TButton").pack(
+        fill=tk.X,
+        padx=10, pady=5,
+        ipadx=ipad, ipady=ipad)
+
+    ttk.Button(frame1, text="Replot histogram\n(from previous critical line calculation)",
+               command=do_critical_line_histogram,
+               style="CenterText.TButton").pack(fill=tk.X,
+                                                padx=10, pady=5,
+                                                ipadx=ipad, ipady=ipad)
     ttk.Button(frame1, text="Riemann vectors", command=do_vectors).pack(fill=tk.X,
                                                                         padx=10, pady=5,
                                                                         ipadx=ipad, ipady=ipad)
     ttk.Button(frame1, text="Exit", command=partial(do_exit, root)).pack(fill=tk.X,
-                                                          padx=10, pady=5,
-                                                          ipadx=ipad, ipady=ipad)
-
+                                                                         padx=10, pady=5,
+                                                                         ipadx=ipad, ipady=ipad)
 
     if is_android:
         print("Android!")
@@ -118,5 +122,6 @@ def do_main():
     print("Finished")
     root.destroy()
 
-#if __name__ == '__main__':   #
+
+# if __name__ == '__main__':   #
 do_main()
