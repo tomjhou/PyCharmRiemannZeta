@@ -16,7 +16,7 @@ def show():
     plt.pause(0.001)
 
 
-def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True):
+def show_critical_line(show_graph1=True, show_off_critical=False, save_full=True):
     imag_start = 1
     imag_end = 120000
     imag_points = (imag_end - imag_start) * 100 + 1
@@ -84,7 +84,7 @@ def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True)
     print("Calculated k^s along critical line Re[s]=0.5 in %1.2f seconds" % (t1 - t0))
 
     print("Calculating Riemann values along critical line. Please wait ...")
-    y = np.real(rm.riemann_real(s, is_vertical=True))
+    y: np.ndarray = np.real(rm.riemann_real(s, is_vertical=True))
 
     t2 = time.time()
     print("Calculated values along critical line Re[s]=0.5 in %1.2f seconds" % (t2 - t1))
@@ -105,7 +105,8 @@ def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True)
             show()
 
     #
-    #  Now generate histograms
+    #  nonzero() returns indices of local min and max.
+    #  Pycharm complains about it, even though usage is correct.
     #
     list_minima = ((y[1:-1] < y[:-2]) & (y[1:-1] <= y[2:])).nonzero()[0]
     list_maxima = ((y[1:-1] > y[:-2]) & (y[1:-1] >= y[2:])).nonzero()[0]
@@ -129,9 +130,13 @@ def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True)
     show_histograms(imag_start, imag_end, values_min, values_max)
 
 
-def show_histograms(imag_start=1, imag_end=np.nan, values_min=[], values_max=[], load_full=False):
+def show_histograms(imag_start=1, imag_end=np.nan, values_min=None, values_max=None, load_full=False):
 
-    if values_min == []:
+    if values_min is None:
+        values_min = []
+    if values_max is None:
+        values_max = []
+    if len(values_min) == 0:
         #            file_path = 'riemann_extrema_120000_full.pkl'
         file_path = filedialog.askopenfilename()
         with open(file_path, 'rb') as f:
@@ -145,11 +150,11 @@ def show_histograms(imag_start=1, imag_end=np.nan, values_min=[], values_max=[],
                 imag_start, imag_end, values_min, values_max = pickle.load(f)
 
     def plot_hist_pair(mins, maxes, numbins=360, log=False):
-        values_min = mins[1:]  # Exclude first minimum. (Not necessary)
-        values_max = maxes[1:]  # Exclude first maximum, as it is the only one below zero
+        v_min = mins[1:]  # Exclude first minimum. (Not necessary)
+        v_max = maxes[1:]  # Exclude first maximum, as it is the only one below zero
 
-        hist_min = np.histogram(values_min, bins=numbins, density=True)
-        hist_max = np.histogram(values_max, bins=numbins, density=True)
+        hist_min = np.histogram(v_min, bins=numbins, density=True)
+        hist_max = np.histogram(v_max, bins=numbins, density=True)
 
         if log:
             plt.plot(hist_min[1][1:], np.log10(hist_min[0]))
@@ -167,7 +172,7 @@ def show_histograms(imag_start=1, imag_end=np.nan, values_min=[], values_max=[],
     plot_hist_pair(values_min[0:10000], values_max[0:10000], numbins=120)
     # Plot all min/max
     plot_hist_pair(values_min, values_max, numbins=240)
-    plt.title("Distribution of Riemann minima and maxima up to Imag(s) = " + str(imag_end))
+    plt.title(f"Distribution of Riemann local min/max for Imag(s) = {imag_start}-{imag_end}")
 
     # Plot logs
     fig3 = plt.figure()
@@ -175,14 +180,14 @@ def show_histograms(imag_start=1, imag_end=np.nan, values_min=[], values_max=[],
     plot_hist_pair(values_min[0:10000], values_max[0:10000], numbins=120, log=True)
     plot_hist_pair(values_min, values_max, numbins=240, log=True)
 
-    plt.title("Log distribution of Riemann minima and maxima up to Imag(s) = " + str(imag_end))
+    plt.title(f"Log distribution of Riemann local min/max for Imag(s) = {imag_start}-{imag_end}")
     show()
 
 
 if __name__ == "__main__":
     print("Done importing")
 
-    show_critial_line()
+    show_critical_line()
 
     # This keeps main window open until dismissed. Don't call this if we came here from elsewhere.
     print("Close window to exit program")
