@@ -7,3 +7,5 @@
 /.idea/RiemannZeta.iml
 /.idea/*
 /__pycache__/RiemannMath.cpython-39.pyc
+/.spyproject/
+*checkpoint.ipynb

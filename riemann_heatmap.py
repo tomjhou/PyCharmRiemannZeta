@@ -79,7 +79,7 @@ class SettingsClass:
         # Plot range control
         self.plot_range_y = 20.0
         self.plot_range_x = 20.0
-        self.plot_y_start = 0
+        self.plot_y_center = 0
 
 
 settings = SettingsClass()
@@ -382,8 +382,8 @@ def make_plot(_selection):
     if (0 < _selection <= 6) or (_selection == 17):
         rm.precompute_coeffs()
 
-    y_max = settings.plot_y_start + settings.plot_range_y
-    y_min = settings.plot_y_start - settings.plot_range_y
+    y_max = settings.plot_y_center + settings.plot_range_y
+    y_min = settings.plot_y_center - settings.plot_range_y
 
     if settings.critical_strip:
         x_min = 0

@@ -28,6 +28,7 @@ def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True)
     if rm.RIEMANN_ITER_LIMIT < iter_limit:
         rm.RIEMANN_ITER_LIMIT = iter_limit  # int(height * 3)
 
+    print("Precomputing coefficients for eta calculations. Please wait ...")
     rm.precompute_coeffs()
     print("Done computing coefficients, iteration limit = " + str(rm.RIEMANN_ITER_LIMIT))
 
@@ -82,6 +83,7 @@ def show_critial_line(show_graph1=True, show_off_critical=False, save_full=True)
     t1 = time.time()
     print("Calculated k^s along critical line Re[s]=0.5 in %1.2f seconds" % (t1 - t0))
 
+    print("Calculating Riemann values along critical line. Please wait ...")
     y = np.real(rm.riemann_real(s, is_vertical=True))
 
     t2 = time.time()

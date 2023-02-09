@@ -13,10 +13,6 @@ def do_button(wid):
     rh.make_plot(_selection=wid)
 
 
-def do_square():
-    # diagnostic function only. Because we have a backing variable tracking this, we don't need to handle anything
-    print("Keep square val: " + str(rh.settings.keep_square.get()))
-
 
 class WinHeatMap:
     def __init__(self, win, is_android):
@@ -107,31 +103,31 @@ class WinHeatMap:
 
         # spinbox for plot x range
         # rh.settings.plot_range_x = tk.StringVar(win)
-        self.spin2 = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin2, width=5)
-        self.spin2.pack(side=tk.LEFT)
+        self.spin_x_range = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin_x_range, width=5)
+        self.spin_x_range.pack(side=tk.LEFT)
 
         # Need to bind keys or else value doesn't update
-        self.spin2.bind('<Return>', self.do_spin2_event)
-        self.spin2.bind('<FocusOut>', self.do_spin2_event)
+        self.spin_x_range.bind('<Return>', self.do_spin_x_range_event)
+        self.spin_x_range.bind('<FocusOut>', self.do_spin_x_range_event)
 
         self.label_spinner = ttk.Label(frame_spinner, text="  Plot y ± range: ")
         self.label_spinner.pack(side=tk.LEFT)
-        self.spin1 = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin1, width=5)
-        self.spin1.pack(side=tk.LEFT)
+        self.spin_y_range = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin_y_range, width=5)
+        self.spin_y_range.pack(side=tk.LEFT)
 
         # Need to bind keys or else value doesn't update
-        self.spin1.bind('<Return>', self.do_spin1_event)
-        self.spin1.bind('<FocusOut>', self.do_spin1_event)
+        self.spin_y_range.bind('<Return>', self.do_spin_y_range_event)
+        self.spin_y_range.bind('<FocusOut>', self.do_spin_y_range_event)
         #            self.spin1.bind('<FocusIn>', do_spin1_event)
 
         self.label_spinner = ttk.Label(frame_spinner, text="  Plot y center: ")
         self.label_spinner.pack(side=tk.LEFT)
-        self.spin3 = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin3, width=5)
-        self.spin3.pack(side=tk.LEFT)
+        self.spin_y_center = ttk.Spinbox(frame_spinner, from_=1, to=100, command=self.do_spin_y_center, width=5)
+        self.spin_y_center.pack(side=tk.LEFT)
 
         # Need to bind keys or else value doesn't update
-        self.spin3.bind('<Return>', self.do_spin3_event)
-        self.spin3.bind('<FocusOut>', self.do_spin3_event)
+        self.spin_y_center.bind('<Return>', self.do_spin_y_center_event)
+        self.spin_y_center.bind('<FocusOut>', self.do_spin_y_center_event)
         #            self.spin1.bind('<FocusIn>', do_spin1_event)
 
         #
@@ -260,9 +256,9 @@ class WinHeatMap:
         self.sliderA.set(rh.settings.parameterA)
         self.sliderB.set(rh.settings.parameterB)
 
-        self.spin1.set(rh.settings.plot_range_y)
-        self.spin2.set(rh.settings.plot_range_x)
-        self.spin3.set(rh.settings.plot_y_start)
+        self.spin_y_range.set(rh.settings.plot_range_y)
+        self.spin_x_range.set(rh.settings.plot_range_x)
+        self.spin_y_center.set(rh.settings.plot_y_center)
 
     def update_slider(self, percent):
         #        print("  \r" + '{:1.2f}'.format(percent) + "%", end="")
@@ -271,6 +267,19 @@ class WinHeatMap:
 
     # partialmethod() does not work in combination with tkinter. So this is not used.
     # Instead, there is a function defined outside this class that handles button press.
+
+    def do_square(self):
+        # Because we have a backing variable tracking this, we don't need to update any other variable
+        val = rh.settings.keep_square.get()
+        print("Keep square val: " + str(val))
+
+        if val == True:
+            # Ensure that y-range is same as x-range
+            rh.settings.plot_range_y = rh.settings.plot_range_x
+            self.spin_y_range.set(rh.settings.plot_range_y)
+            # Turn off critical strip option, which is incompatible with this one.
+            rh.settings.critical_strip = not val
+            self.var_critical_strip.set(not val)
 
     def do_quit(self):
 
@@ -389,13 +398,14 @@ class WinHeatMap:
     def do_cancel(self):
         rh.rm.quit_computation_flag = True
 
-    def do_spin1(self):
+    def do_spin_y_range(self):
         # User has clicked on spinner arrows
-        val = self.spin1.get()
+        # This is the y-range spinner
+        val = self.spin_y_range.get()
         float_val = float(val)
         rh.settings.plot_range_y = float_val
         if rh.settings.keep_square.get():
-            self.spin2.set(val)
+            self.spin_x_range.set(val)
             rh.settings.plot_range_x = float_val
 
     # Attempting to make a generic updater ... this does not work because range1, range2 are floats, which are immutable
@@ -412,53 +422,60 @@ class WinHeatMap:
             if rh.settings.auto_recalculate:
                 self.recalculate()
 
-    def do_spin1_event(self, _event):
+    def do_spin_y_range_event(self, _event):
         # User has moved focus out of spinner, or hit enter key
-        val = self.spin1.get()
+        # This is the y-range spinner
+        val = self.spin_y_range.get()  # Get value from GUI. Value is text.
         float_val = float(val)
         if rh.settings.plot_range_y != float_val:
+            # If changed from before, then store new value in rh.settings,
+            # then handle possible updating of x-range (to keep square)
+            # and possible auto-recalculation.
             rh.settings.plot_range_y = float_val
-            # Only update if it has changed.
             if rh.settings.keep_square.get():
                 rh.settings.plot_range_x = float_val
-                self.spin2.set(val)
+                self.spin_x_range.set(val)
             if rh.settings.auto_recalculate:
                 self.recalculate()
 
-    def do_spin2(self):
+    def do_spin_x_range(self):
         # User has clicked on spinner arrows
-        val = self.spin2.get()
+        # This is the x-range spinner
+        val = self.spin_x_range.get()
         float_val = float(val)
         rh.settings.plot_range_x = float_val
         if rh.settings.keep_square.get():
-            self.spin1.set(val)
+            self.spin_y_range.set(val)
             rh.settings.plot_range_y = float_val
 
-    def do_spin2_event(self, _event):
+    def do_spin_x_range_event(self, _event):
         # User has moved focus out of spinner, or hit enter key
-        val = self.spin2.get()
+        # This is the x-range spinner
+        val = self.spin_x_range.get()
         float_val = float(val)
         if rh.settings.plot_range_x != float_val:
             rh.settings.plot_range_x = float_val
             # Only update if it has changed.
             if rh.settings.keep_square.get():
                 rh.settings.plot_range_y = float_val
-                self.spin1.set(val)
+                self.spin_y_range.set(val)
             if rh.settings.auto_recalculate:
                 self.recalculate()
 
-    def do_spin3(self):
+    def do_spin_y_center(self):
         # User has clicked on spinner arrows
-        val = self.spin3.get()
+        # This is the y-center spinner
+        val = self.spin_y_center.get()
         float_val = float(val)
-        rh.settings.plot_y_start = float_val
+        rh.settings.plot_y_center = float_val
 
-    def do_spin3_event(self, _event):
+    def do_spin_y_center_event(self, _event):
         # User has moved focus out of spinner, or hit enter key
-        val = self.spin3.get()
+        # This is the y-center spinner
+        val = self.spin_y_center.get()
         float_val = float(val)
-        if rh.settings.plot_y_start != float_val:
-            rh.settings.plot_y_start = float_val
+        if rh.settings.plot_y_center != float_val:
+            rh.settings.plot_y_center = float_val
             # Only update if it has changed.
             if rh.settings.auto_recalculate:
                 self.recalculate()
@@ -493,6 +510,18 @@ class WinHeatMap:
 
     def do_critical_strip(self):
         rh.settings.critical_strip = self.var_critical_strip.get()
+        if rh.settings.critical_strip == True:
+            # Turn off 1:1 aspect ratio, which is incompatible with this option
+            rh.settings.keep_square.set(False)
+
+            # Set y-range to 8
+            self.spin_y_range.set("8")
+            rh.settings.plot_range_y = 8.0
+
+            if rh.settings.plot_y_center == 0:
+                # If y-center is 0, then set to 20 to get more interesting region.
+                self.spin_y_center.set("20")
+                rh.settings.plot_y_center = 20.0
         if rh.settings.auto_recalculate:
             self.recalculate()
 
@@ -500,7 +529,7 @@ class WinHeatMap:
         # User lower value to speed up calculations
         # Must set this value before creating TopLevel window, as that will
         # use it to set slider/scale
-        rh.rm.RIEMANN_ITER_LIMIT = 30
+        rh.rm.RIEMANN_ITER_LIMIT = 100
 
         self.set_initial_values()
 
@@ -523,3 +552,5 @@ def do_main():
 # root.mainloop()
 if __name__ == "__main__":
     do_main()
+else:
+    print(__name__)
