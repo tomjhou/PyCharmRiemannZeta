@@ -13,7 +13,6 @@ def do_button(wid):
     rh.make_plot(_selection=wid)
 
 
-
 class WinHeatMap:
     def __init__(self, win, is_android):
 
@@ -149,7 +148,7 @@ class WinHeatMap:
         rh.settings.keep_square = tk.IntVar(win)
         self.checkbox_keep_square = ttk.Checkbutton(frame_checks_plot,
                                                     text="1:1 aspect ratio",
-                                                    command=do_square,
+                                                    command=self.do_square,
                                                     variable=rh.settings.keep_square)
         self.checkbox_keep_square.pack(side=tk.LEFT)
 
@@ -273,7 +272,7 @@ class WinHeatMap:
         val = rh.settings.keep_square.get()
         print("Keep square val: " + str(val))
 
-        if val == True:
+        if val:
             # Ensure that y-range is same as x-range
             rh.settings.plot_range_y = rh.settings.plot_range_x
             self.spin_y_range.set(rh.settings.plot_range_y)
@@ -379,7 +378,8 @@ class WinHeatMap:
             if rh.settings.auto_recalculate:
                 self.recalculate()
 
-    def recalculate(self):
+    @staticmethod
+    def recalculate():
         # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
         wid = rh.settings.last_selection
         if wid < 0:
@@ -388,14 +388,16 @@ class WinHeatMap:
         rh.settings.REUSE_FIGURE = True
         rh.make_plot(wid)
 
-    def do_remap_color(self):
+    @staticmethod
+    def do_remap_color():
         # Handle user pressing Recalculate button, or programmatic recalculations if auto-calculate is checked
         if rh.settings.last_selection < 0:
             # No previous selection exists, e.g. we have just launched program
             return
         rh.map_color()
 
-    def do_cancel(self):
+    @staticmethod
+    def do_cancel():
         rh.rm.quit_computation_flag = True
 
     def do_spin_y_range(self):
@@ -510,7 +512,7 @@ class WinHeatMap:
 
     def do_critical_strip(self):
         rh.settings.critical_strip = self.var_critical_strip.get()
-        if rh.settings.critical_strip == True:
+        if rh.settings.critical_strip:
             # Turn off 1:1 aspect ratio, which is incompatible with this option
             rh.settings.keep_square.set(False)
 
@@ -537,8 +539,7 @@ class WinHeatMap:
 def do_main():
     root = tk.Tk()
 
-    if 'ANDROID_BOOTLOGO' in environ:
-        is_android = True
+    is_android = ('ANDROID_BOOTLOGO' in environ)
 
     win = WinHeatMap(root, is_android)
     win.make_heatmap_gui()
