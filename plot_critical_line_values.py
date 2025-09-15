@@ -3,6 +3,7 @@ from matplotlib import use
 import matplotlib.pyplot as plt
 import time
 import pickle
+import tkinter as tk
 from tkinter import filedialog
 import riemann_math as rm
 
@@ -28,6 +29,7 @@ def show_critical_line(show_graph1=True, show_off_critical=False, save_full=True
     if rm.RIEMANN_ITER_LIMIT < iter_limit:
         rm.RIEMANN_ITER_LIMIT = iter_limit  # int(height * 3)
 
+    tk.messagebox.showinfo("", "About to pre-compute coefficients. Will take a few minutes. Please see console window for progress updates.")
     print(f"Precomputing coefficients, iteration limit = {rm.RIEMANN_ITER_LIMIT}. Please wait...")
     rm.precompute_coeffs()
 
