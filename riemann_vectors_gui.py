@@ -198,7 +198,13 @@ class GraphicsObjects:
         canvas.mpl_connect('button_release_event', self.on_mouse_release)
         canvas.mpl_connect('key_press_event', self.on_keypress)
         canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+        canvas.mpl_connect('resize_event', self.on_resize)
+        # Closing the window must end the animation loop, same as Quit. Otherwise the loop keeps
+        # running inside the launcher's button callback, and the launcher can no longer exit.
+        canvas.mpl_connect('close_event', self.do_quit)
         self.fig = fig
+        self.buttons = []
+        self.flagResized = False  # When true, cached blit backgrounds are stale and must be recaptured
         self.canvas = canvas
         self.ax = plt.gca()
 
@@ -268,6 +274,58 @@ class GraphicsObjects:
         ax_quit = plt.axes([BUTTON_X + BUTTON_SPACING_X * 7, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT])
         self.b_quit = Button(ax_quit, 'Quit (x)')
         self.b_quit.on_clicked(self.do_quit)
+
+        self.buttons = [self.b_animate, self.b_1_vs_2, self.b_output, self.b_reset,
+                        self.b_show_arrows, self.b_zoom, self.b_dots, self.b_quit]
+        self.scale_button_text()
+
+    def on_resize(self, event):
+        """
+        Window was resized. Button axes are placed in figure-fraction coordinates, so they stretch
+        on their own, but their text has a fixed point size, so scale that here. The blit
+        backgrounds are bitmaps of the old size, so flag them to be recaptured by the animation loop.
+        """
+        self.scale_button_text()
+        self.flagResized = True
+
+    def scale_button_text(self):
+        """Size button labels to fit the buttons' current pixel size."""
+        if not self.buttons:
+            return
+        fig_w, fig_h = self.fig.bbox.width, self.fig.bbox.height  # Display pixels
+        if fig_w <= 0 or fig_h <= 0:
+            return
+        longest = max(len(b.label.get_text()) for b in self.buttons)
+        # Text height about half the button height, and the longest label about 90% of the button width
+        # (average character is roughly 0.6 em wide)
+        px = min(0.5 * BUTTON_HEIGHT * fig_h, 0.9 * BUTTON_WIDTH * fig_w / (0.6 * longest))
+        points = max(px * 72 / self.fig.dpi, 4)
+        for b in self.buttons:
+            b.label.set_fontsize(points)
+
+    def Refresh_backgrounds(self):
+        """Recapture all cached blit backgrounds at the current window size."""
+        self.flagResized = False
+
+        # Hide everything that is drawn per frame, so it doesn't get baked into the backgrounds
+        dynamic = list(self.arrowOutput) + list(self.ax.patches) + [self.textObj.textObjArrayRow1]
+        was_visible = [a.get_visible() for a in dynamic]
+        for a in dynamic:
+            a.set_visible(False)
+
+        # Blank background (used when centered on target) has no rainbow output line
+        if self.pltLineCollection is not None:
+            self.pltLineCollection.set_visible(False)
+        self.set_zoom()
+        self.canvas.draw()
+        self.bg_blank = self.canvas.copy_from_bbox(self.ax.bbox)
+        if self.pltLineCollection is not None:
+            self.pltLineCollection.set_visible(True)
+
+        self.Save_background(self.canvas)
+
+        for a, v in zip(dynamic, was_visible):
+            a.set_visible(v)
 
     # Create input and output rainbow lines
     def InitAnimation(self):

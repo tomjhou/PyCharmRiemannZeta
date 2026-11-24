@@ -19,6 +19,7 @@ import typing
 import riemann_vectors_gui as mg
 import riemann_math as rm
 import matplotlib.lines as mlines
+from matplotlib.backend_tools import Cursors
 
 
 class RiemannVectors(mg.GraphicsObjects):
@@ -80,16 +81,16 @@ class RiemannVectors(mg.GraphicsObjects):
         -------
 
         """
-        if v:
-            try:
-                # PyCharm complains that _last_cursor is protected element
-                self.old_cursor = self.canvas.toolbar._last_cursor
-                self.canvas.toolbar.set_cursor(1)
-            except AttributeError as e:
-                print("Error setting hourglass cursor: " + str(e))
-        else:
-            if self.old_cursor is not None:
-                self.canvas.toolbar.set_cursor(self.old_cursor)
+        # Since matplotlib 3.5, cursors are set on the canvas rather than the toolbar.
+        # Failure to change the cursor is cosmetic, so never let it stop the program.
+        try:
+            if v:
+                self.old_cursor = getattr(self.canvas.toolbar, '_last_cursor', Cursors.POINTER)
+                self.canvas.set_cursor(Cursors.WAIT)
+            else:
+                self.canvas.set_cursor(self.old_cursor if self.old_cursor is not None else Cursors.POINTER)
+        except Exception as e:
+            print("Error setting cursor: " + str(e))
 
     def MakeLine2(self) -> [list, matplotlib.collections.LineCollection]:
         self.th1, self.line_colors = super().MakeLine1(self.PLOT_SIZE, self.INPUT_SCALE,
@@ -284,6 +285,10 @@ class RiemannVectors(mg.GraphicsObjects):
                         outputCirclePatch2.set_radius(self.CIRCLE_PATCH_SCALE * self.GetAxisScale() / 2)
                         outputCirclePatch3.set_radius(self.CIRCLE_PATCH_SCALE * self.GetAxisScale() / 2)
 
+            if self.flagResized:
+                # Window size changed, so old background bitmaps no longer fit
+                self.Refresh_backgrounds()
+
             self.Restore_background(self.canvas)
 
             # Update text
@@ -309,6 +314,9 @@ class RiemannVectors(mg.GraphicsObjects):
             self.canvas.flush_events()
 
             while not self.quit_flag:
+
+                if self.flagResized:
+                    break  # Redraw frame with refreshed backgrounds, even when paused
 
                 self.CheckArrows()
                 if self.localShowArrows != self.flagShowArrows:

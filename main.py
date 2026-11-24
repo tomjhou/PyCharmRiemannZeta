@@ -15,10 +15,22 @@ if 'ANDROID_BOOTLOGO' in environ:
     is_android = True
 
 
+# 2D plot animations currently running. Their loops run inside the launcher's button callbacks,
+# so Exit must stop them before the launcher's own mainloop can end.
+running_animations = []
+
+
+def run_animation(anim):
+    running_animations.append(anim)
+    try:
+        anim.make_graph()
+    finally:
+        running_animations.remove(anim)
+
+
 def do_vectors():
     # 2d plot in complex plane of values along critical line
-    rv = RiemannVectors()
-    rv.make_graph()
+    run_animation(RiemannVectors())
 
 
 def do_heatmap(root):
@@ -43,7 +55,7 @@ def do_heatmap(root):
 
 def do_perpendicular():
     # 2d plot in complex plane of values along vertical slices parallel to critical line
-    PerpendicularAnimate(PLOT_DOMAIN).make_graph()
+    run_animation(PerpendicularAnimate(PLOT_DOMAIN))
 
 
 def do_critical_line(show_graphs=True):
@@ -57,6 +69,9 @@ def do_critical_line_histogram():
 def do_exit(root):
     global quit_flag
     quit_flag = True
+    # Tell any running 2D animation loops to stop; each one closes its own window on the way out
+    for anim in running_animations:
+        anim.do_quit()
     root.quit()
 
 
@@ -80,13 +95,25 @@ def do_main():
                command=partial(do_heatmap, root)).pack(fill=tk.X,
                                                        padx=10, pady=5,
                                                        ipadx=ipad, ipady=ipad)
+
+    style = ttk.Style()
+    style.configure("CenterText.TButton", justify="center")
+
+    ttk.Button(frame1, text="2D plot along critical line",
+               command=do_vectors).pack(fill=tk.X,
+                                        padx=10, pady=5,
+                                        ipadx=ipad, ipady=ipad)
+
+    ttk.Button(frame1, text="2D plot along lines\nparallel to critical line",
+               style="CenterText.TButton",
+               command=do_perpendicular).pack(fill=tk.X,
+                                              padx=10, pady=5,
+                                              ipadx=ipad, ipady=ipad)
+
     ttk.Button(frame1, text="Critical line plot",
                command=do_critical_line).pack(fill=tk.X,
                                               padx=10, pady=5,
                                               ipadx=ipad, ipady=ipad)
-
-    style = ttk.Style()
-    style.configure("CenterText.TButton", justify="center")
 
     ttk.Button(frame1, text="Critical line calculation\n(histograms only)",
                command=partial(do_critical_line, False),
@@ -100,16 +127,6 @@ def do_main():
                style="CenterText.TButton").pack(fill=tk.X,
                                                 padx=10, pady=5,
                                                 ipadx=ipad, ipady=ipad)
-    ttk.Button(frame1, text="2D plot along critical line",
-               command=do_vectors).pack(fill=tk.X,
-                                        padx=10, pady=5,
-                                        ipadx=ipad, ipady=ipad)
-
-    ttk.Button(frame1, text="2D plot along lines\nparallel to critical line",
-               style="CenterText.TButton",
-               command=do_perpendicular).pack(fill=tk.X,
-                                              padx=10, pady=5,
-                                              ipadx=ipad, ipady=ipad)
 
     ttk.Button(frame1, text="Exit",
                command=partial(do_exit, root)).pack(fill=tk.X,
